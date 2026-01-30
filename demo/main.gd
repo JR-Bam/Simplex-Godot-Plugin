@@ -2,7 +2,7 @@
 extends Node
 
 var terrain: MeshInstance3D
-var noise := Simplex.new()
+@export var noise := Simplex.new()
 var mesh: ArrayMesh
 
 @export var toggle: bool = true:

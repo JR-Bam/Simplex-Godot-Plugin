@@ -10,6 +10,7 @@
 #pragma once
 
 #include <cstddef>  // size_t
+#include <cstdint>   // int32_t
 
 /**
  * @brief A Perlin Simplex Noise C++ Implementation (1D, 2D, 3D, 4D).
@@ -17,16 +18,16 @@
 class SimplexNoise {
 public:
     // 1D Perlin simplex noise
-    static float noise(float x);
+    static float noise(float x, int32_t seed);
     // 2D Perlin simplex noise
-    static float noise(float x, float y);
+    static float noise(float x, float y, int32_t seed);
     // 3D Perlin simplex noise
-    static float noise(float x, float y, float z);
+    static float noise(float x, float y, float z, int32_t seed);
 
     // Fractal/Fractional Brownian Motion (fBm) noise summation
-    float fractal(size_t octaves, float x) const;
-    float fractal(size_t octaves, float x, float y) const;
-    float fractal(size_t octaves, float x, float y, float z) const;
+    float fractal(size_t octaves, float x, int32_t seed) const;
+    float fractal(size_t octaves, float x, float y, int32_t seed) const;
+    float fractal(size_t octaves, float x, float y, float z, int32_t seed) const;
 
     /**
      * Constructor of to initialize a fractal noise summation
