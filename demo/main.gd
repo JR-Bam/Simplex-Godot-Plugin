@@ -1,0 +1,66 @@
+@tool
+extends Node
+
+var terrain: MeshInstance3D
+var noise := Simplex.new()
+var mesh: ArrayMesh
+
+@export var toggle: bool = true:
+	set(_toggle):
+		toggle = _toggle
+		generate_terrain()
+
+@export_range(1, 100, 1) var subdivisions: int = 10:
+	set(subdiv):
+		subdivisions = subdiv
+		generate_terrain()
+
+@export_range(1, 1000, 1) var size: int = 500:
+	set(_size):
+		size = _size
+		generate_terrain()
+
+@export var amplitude = 40
+@export var frequency = 5.0
+
+func _ready() -> void:
+	terrain = $Terrain
+	mesh = ArrayMesh.new()  # Create a new instance
+	terrain.mesh = mesh  # Assign it to the MeshInstance3D
+	generate_terrain()
+
+func generate_terrain():
+	# Update mesh properties
+	var plane = PlaneMesh.new()
+	plane.size = Vector2(size, size)
+	plane.subdivide_width = subdivisions
+	plane.subdivide_depth = subdivisions
+	
+	var data_tool = MeshDataTool.new()
+	var array_mesh = ArrayMesh.new()
+	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, plane.get_mesh_arrays())
+	data_tool.create_from_surface(array_mesh, 0)
+	
+	for i in range(data_tool.get_vertex_count()):
+		var vertex = data_tool.get_vertex(i)
+		var x = vertex.x
+		var z = vertex.z
+		
+		var base_height = noise.get_noise_2d(x * frequency, z * frequency) * amplitude
+		
+		vertex.y = base_height
+		data_tool.set_vertex(i, vertex)
+	
+	# Commit changes to mesh
+	array_mesh.clear_surfaces()
+	data_tool.commit_to_surface(array_mesh)
+	
+	var surface_tool = SurfaceTool.new()
+	surface_tool.create_from(array_mesh, 0)
+	surface_tool.generate_normals()
+	
+	surface_tool.get_primitive_type()
+	
+	mesh = surface_tool.commit()
+	# IMPORTANT: Reassign the mesh to trigger the update
+	terrain.mesh = mesh
