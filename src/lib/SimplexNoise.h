@@ -47,7 +47,6 @@ public:
         mPersistence(persistence) {
     }
 
-private:
     // Parameters of Fractional Brownian Motion (fBm) : sum of N "octaves" of noise
     float mFrequency;   ///< Frequency ("width") of the first octave of noise (default to 1.0)
     float mAmplitude;   ///< Amplitude ("height") of the first octave of noise (default to 1.0)
