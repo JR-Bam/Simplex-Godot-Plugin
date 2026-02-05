@@ -23,12 +23,14 @@ void Simplex::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_gain"), &Simplex::get_gain);
     ClassDB::bind_method(D_METHOD("set_fractal_type", "fractal_type"), &Simplex::set_fractal_type);
     ClassDB::bind_method(D_METHOD("get_fractal_type"), &Simplex::get_fractal_type);
+    ClassDB::bind_method(D_METHOD("set_ping_pong_strength", "ping_pong_strength"), &Simplex::set_ping_pong_strength);
+    ClassDB::bind_method(D_METHOD("get_ping_pong_strength"), &Simplex::get_ping_pong_strength);
 
 
     // Static Properties
     ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "frequency", 
-        PROPERTY_HINT_RANGE, "0,1,0.0001"), 
+        PROPERTY_HINT_EXP_EASING, "0,1,0.0001"), 
         "set_frequency", "get_frequency");
     
     // Enum
@@ -43,12 +45,14 @@ void Simplex::_get_property_list(List<PropertyInfo> *p_list) const
     // Add a group heading in the inspector
     p_list->push_back(PropertyInfo(Variant::NIL, "Fractal", PROPERTY_HINT_NONE, "fractal_", PROPERTY_USAGE_GROUP));
     // Fractal type enum
-    p_list->push_back(PropertyInfo(Variant::INT, "fractal_type", PROPERTY_HINT_ENUM, "FRACTAL_NONE,FRACTAL_FBM,FRACTAL_RIDGED,FRACTAL_PING_PONG"));
+    p_list->push_back(PropertyInfo(Variant::INT, "fractal_type", PROPERTY_HINT_ENUM, "None,FBM,Ridged,Ping-Pong"));
     
     if (type != FractalType::FRACTAL_NONE) {
-        p_list->push_back(PropertyInfo(Variant::INT, "fractal_octaves", PROPERTY_HINT_RANGE, "1,16,1", PROPERTY_USAGE_DEFAULT));
-        p_list->push_back(PropertyInfo(Variant::FLOAT, "fractal_lacunarity", PROPERTY_HINT_RANGE, "1.0,4.0,0.01", PROPERTY_USAGE_DEFAULT));
-        p_list->push_back(PropertyInfo(Variant::FLOAT, "fractal_gain", PROPERTY_HINT_RANGE, "0.0,1.0,0.01", PROPERTY_USAGE_DEFAULT));
+        p_list->push_back(PropertyInfo(Variant::INT, "fractal_octaves"));
+        p_list->push_back(PropertyInfo(Variant::FLOAT, "fractal_lacunarity"));
+        p_list->push_back(PropertyInfo(Variant::FLOAT, "fractal_gain"));
+        if (type == FractalType::FRACTAL_PING_PONG)
+            p_list->push_back(PropertyInfo(Variant::FLOAT, "fractal_ping_pong_strength"));
     }
 }
 
@@ -58,6 +62,7 @@ bool Simplex::_property_can_revert(const StringName &p_property) const
     if (p_property == StringName("fractal_octaves")) return true;
     if (p_property == StringName("fractal_lacunarity")) return true;
     if (p_property == StringName("fractal_gain")) return true;
+    if (p_property == StringName("fractal_ping_pong_strength")) return true;
     if (p_property == StringName("frequency")) return true;
     if (p_property == StringName("seed")) return true;
     return false;
@@ -79,6 +84,10 @@ bool Simplex::_property_get_revert(const StringName &p_property, Variant &r_ret)
     }
     if (p_property == StringName("fractal_gain")) {
         r_ret = 0.5f;  // Default value for gain
+        return true;
+    }
+    if (p_property == StringName("fractal_ping_pong_strength")) {
+        r_ret = 2.0f;  
         return true;
     }
     if (p_property == StringName("frequency")) {
@@ -105,6 +114,9 @@ bool Simplex::_set(const StringName &p_name, const Variant &p_value) {
     } else if (p_name == StringName("fractal_gain")) {
         set_gain(p_value);
         return true;
+    } else if (p_name == StringName("fractal_ping_pong_strength")) {
+        set_ping_pong_strength(p_value);
+        return true;
     }
     return false;
 }
@@ -122,44 +134,78 @@ bool Simplex::_get(const StringName &p_name, Variant &r_ret) const {
     } else if (p_name == StringName("fractal_gain")) {
         r_ret = gain;
         return true;
+    } else if (p_name == StringName("fractal_ping_pong_strength")) {
+        r_ret = pingPongStrength;
+        return true;
     }
     return false;
 }
 
 float Simplex::get_noise_1d(float p_x) const
 {
-    if (this->type == FRACTAL_NONE)
+    switch (this->type) {
+    case FRACTAL_NONE:
         return this->noise->fractal(1, p_x, seed);
-    return this->noise->fractal(this->octaves, p_x, seed);
+    default:
+        return this->noise->fractal(this->octaves, p_x, seed);
+    }
 }
 
 float Simplex::get_noise_2d(float p_x, float p_y) const
 {
-    if (this->type == FRACTAL_NONE)
+    switch (this->type) {
+    case FRACTAL_NONE:
         return this->noise->fractal(1, p_x, p_y, seed);
-    return this->noise->fractal(this->octaves, p_x, p_y, seed);
+    case FRACTAL_RIDGED:
+        return this->noise->ridged(this->octaves, p_x, p_y, seed);
+    case FRACTAL_PING_PONG:
+        return this->noise->pingpong(this->octaves, p_x, p_y, seed);
+    default:
+        return this->noise->fractal(this->octaves, p_x, p_y, seed);
+    }
 }
 
 float Simplex::get_noise_2dv(const Vector2 &p_v) const
 {
-    if (this->type == FRACTAL_NONE)
+    switch (this->type) {
+    case FRACTAL_NONE:
         return this->noise->fractal(1, p_v.x, p_v.y, seed);
-    return this->noise->fractal(this->octaves, p_v.x, p_v.y, seed);
+    case FRACTAL_RIDGED:
+        return this->noise->ridged(this->octaves, p_v.x, p_v.y, seed);
+    case FRACTAL_PING_PONG:
+        return this->noise->pingpong(this->octaves, p_v.x, p_v.y, seed);
+    default:
+        return this->noise->fractal(this->octaves, p_v.x, p_v.y, seed);
+    }
     
 }
 
 float Simplex::get_noise_3d(float p_x, float p_y, float p_z) const
 {
-    if (this->type == FRACTAL_NONE)
+    switch (this->type) {
+    case FRACTAL_NONE:
         return this->noise->fractal(1, p_x, p_y, p_z, seed);
-    return this->noise->fractal(this->octaves, p_x, p_y, p_z, seed);
+    case FRACTAL_RIDGED:
+        return this->noise->ridged(this->octaves, p_x, p_y, p_z, seed);
+    case FRACTAL_PING_PONG:
+        return this->noise->pingpong(this->octaves, p_x, p_y, p_z, seed);
+    default:
+        return this->noise->fractal(this->octaves, p_x, p_y, p_z, seed);
+    }
 }
 
 float Simplex::get_noise_3dv(const Vector3 &p_v) const
 {
-    if (this->type == FRACTAL_NONE)
+    switch (this->type) {
+    case FRACTAL_NONE:
         return this->noise->fractal(1, p_v.x, p_v.y, p_v.z, seed);
-    return this->noise->fractal(this->octaves, p_v.x, p_v.y, p_v.z, seed);
+    case FRACTAL_RIDGED:
+        return this->noise->ridged(this->octaves, p_v.x, p_v.y, p_v.z, seed);
+    case FRACTAL_PING_PONG:
+        return this->noise->pingpong(this->octaves, p_v.x, p_v.y, p_v.z, seed);
+    default:
+        return this->noise->fractal(this->octaves, p_v.x, p_v.y, p_v.z, seed);
+    }
 }
 
 void Simplex::set_seed(int32_t seed)
@@ -202,6 +248,17 @@ void Simplex::set_gain(float gain)
 float Simplex::get_gain()
 {
     return this->gain;
+}
+
+void godot::Simplex::set_ping_pong_strength(float ping_pong_strength)
+{
+    this->noise->mPingPongStrength = ping_pong_strength;
+    this->pingPongStrength = ping_pong_strength;
+}
+
+float godot::Simplex::get_ping_pong_strength()
+{
+    return this->pingPongStrength;
 }
 
 void Simplex::set_octaves(uint16_t octaves)

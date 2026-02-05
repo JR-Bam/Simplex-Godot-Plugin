@@ -3,6 +3,7 @@ extends Node
 
 var terrain: MeshInstance3D
 @export var noise := Simplex.new()
+@export var fnoise := FastNoiseLite.new()
 var mesh: ArrayMesh
 
 @export var toggle: bool = true:
@@ -46,7 +47,7 @@ func generate_terrain():
 		var x = vertex.x
 		var z = vertex.z
 		
-		var base_height = noise.get_noise_2d(x * frequency, z * frequency) * amplitude
+		var base_height = noise.get_noise_2d(x, z) * amplitude
 		
 		vertex.y = base_height
 		data_tool.set_vertex(i, vertex)

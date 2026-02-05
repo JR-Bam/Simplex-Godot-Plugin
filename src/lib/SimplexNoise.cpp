@@ -484,3 +484,94 @@ float SimplexNoise::fractal(size_t octaves, float x, float y, float z, int32_t s
 
     return (output / denom);
 }
+
+float SimplexNoise::ridged(size_t octaves, float x, float y, int32_t seed) const
+{
+    float sum = 0;
+    float amp = this->calcFractalBounding(octaves);
+
+    for (int i = 0; i < octaves; i++)
+    {
+        float noise = FastAbs(SimplexNoise::noise(x * mFrequency, y * mFrequency, seed));
+        sum += (noise * -2 + 1) * amp;
+        amp *= Lerp(1.0f, 1 - noise, 0.f);
+
+        x *= mLacunarity;
+        y *= mLacunarity;
+        amp *= mPersistence;
+    }
+
+    return sum;
+}
+
+float SimplexNoise::ridged(size_t octaves, float x, float y, float z, int32_t seed) const
+{
+    float sum = 0;
+    float amp = this->calcFractalBounding(octaves);
+
+    for (int i = 0; i < octaves; i++)
+    {
+        float noise = FastAbs(SimplexNoise::noise(x * mFrequency, y * mFrequency, z * mFrequency, seed));
+        sum += (noise * -2 + 1) * amp;
+        amp *= Lerp(1.0f, 1 - noise, 0.f);
+
+        x *= mLacunarity;
+        y *= mLacunarity;
+        z *= mLacunarity;
+        amp *= mPersistence;
+    }
+
+    return sum;
+}
+
+float SimplexNoise::pingpong(size_t octaves, float x, float y, int32_t seed) const
+{
+    float sum = 0;
+    float amp = this->calcFractalBounding(octaves);
+
+    for (int i = 0; i < octaves; i++)
+    {
+        float noise = PingPong((SimplexNoise::noise(x * mFrequency, y * mFrequency, seed) + 1) * mPingPongStrength);
+        sum += (noise - 0.5f) * 2 * amp;
+        amp *= Lerp(1.0f, noise, 0.f);
+
+        x *= mLacunarity;
+        y *= mLacunarity;
+        amp *= mPersistence;
+    }
+
+    return sum;
+}
+
+float SimplexNoise::pingpong(size_t octaves, float x, float y, float z, int32_t seed) const
+{
+    float sum = 0;
+    float amp = this->calcFractalBounding(octaves);
+
+    for (int i = 0; i < octaves; i++)
+    {
+        float noise = PingPong((SimplexNoise::noise(x * mFrequency, y * mFrequency, z * mFrequency, seed) + 1) * mPingPongStrength);
+        sum += (noise - 0.5f) * 2 * amp;
+        amp *= Lerp(1.0f, noise, 0.f);
+
+        x *= mLacunarity;
+        y *= mLacunarity;
+        z *= mLacunarity;
+        amp *= mPersistence;
+    }
+
+    return sum;
+}
+
+float SimplexNoise::calcFractalBounding(size_t octaves) const
+{
+    float gain = FastAbs(mPersistence);
+    float amp = gain;
+    float ampFractal = 1.0f;
+    for (int i = 1; i < octaves; i++)
+    {
+        ampFractal += amp;
+        amp *= gain;
+    }
+    return 1 / ampFractal;
+}

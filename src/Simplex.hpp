@@ -30,7 +30,7 @@ namespace godot
         float get_noise_2dv(const Vector2 &p_v) const;
         float get_noise_3d(float p_x, float p_y, float p_z) const;
         float get_noise_3dv(const Vector3 &p_v) const;
-        Simplex() : seed{0}, octaves{5}, frequency{.5f}, lacunarity{2.f}, gain{.5f},
+        Simplex() : seed{0}, octaves{5}, frequency{.5f}, lacunarity{2.f}, gain{.5f}, pingPongStrength{2.f},
             type{FRACTAL_NONE}, noise{std::make_unique<SimplexNoise>()} {}
         ~Simplex() {};
 
@@ -43,6 +43,8 @@ namespace godot
         float get_lacunarity();
         void set_gain(float gain);
         float get_gain();
+        void set_ping_pong_strength(float ping_pong_strength);
+        float get_ping_pong_strength();
         void set_octaves(uint16_t octaves);
         uint16_t get_octaves();
         void set_fractal_type(FractalType fractal_type);
@@ -54,6 +56,7 @@ namespace godot
         float frequency;
         float lacunarity;
         float gain;
+        float pingPongStrength;
         FractalType type;
     };
 } // namespace godot
