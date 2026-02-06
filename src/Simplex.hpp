@@ -1,6 +1,9 @@
 #pragma once
 
 #include <godot_cpp/classes/resource.hpp>
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/global_constants.hpp>
 #include "lib/SimplexNoise.h"
 #include <memory>
 
@@ -58,6 +61,9 @@ namespace godot
         float gain;
         float pingPongStrength;
         FractalType type;
+
+        Ref<ImageTexture> preview_cache; 
+        void _update_preview(); // Helper to refresh the cache
     };
 } // namespace godot
 

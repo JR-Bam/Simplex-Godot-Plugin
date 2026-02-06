@@ -30,7 +30,7 @@ void Simplex::_bind_methods()
     // Static Properties
     ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "frequency", 
-        PROPERTY_HINT_EXP_EASING, "0,1,0.0001"), 
+        PROPERTY_HINT_RANGE, "0.0001,1,0.0001,exp"), 
         "set_frequency", "get_frequency");
     
     // Enum
@@ -42,6 +42,7 @@ void Simplex::_bind_methods()
 
 void Simplex::_get_property_list(List<PropertyInfo> *p_list) const
 {
+    p_list->push_back(PropertyInfo(Variant::OBJECT, "noise_preview", PROPERTY_HINT_RESOURCE_TYPE, "Texture2D", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY));
     // Add a group heading in the inspector
     p_list->push_back(PropertyInfo(Variant::NIL, "Fractal", PROPERTY_HINT_NONE, "fractal_", PROPERTY_USAGE_GROUP));
     // Fractal type enum
@@ -137,6 +138,12 @@ bool Simplex::_get(const StringName &p_name, Variant &r_ret) const {
     } else if (p_name == StringName("fractal_ping_pong_strength")) {
         r_ret = pingPongStrength;
         return true;
+    } else if (p_name == StringName("noise_preview")) {
+        if (preview_cache.is_null()) {
+            const_cast<Simplex*>(this)->_update_preview();
+        }
+        r_ret = preview_cache;
+        return true;
     }
     return false;
 }
@@ -211,6 +218,8 @@ float Simplex::get_noise_3dv(const Vector3 &p_v) const
 void Simplex::set_seed(int32_t seed)
 {
     this->seed = seed;
+    _update_preview();
+    emit_changed();
 }
 
 int32_t Simplex::get_seed()
@@ -222,6 +231,8 @@ void Simplex::set_frequency(float frequency) {
     float freq = CLAMP(frequency, 0.0f, 1.0f);
     this->noise->mFrequency = freq;
     this->frequency = freq;
+    _update_preview();
+    emit_changed();
 }
 
 float Simplex::get_frequency() {
@@ -232,6 +243,8 @@ void Simplex::set_lacunarity(float lacunarity)
 {
     this->noise->mLacunarity = lacunarity;
     this->lacunarity = lacunarity;
+    _update_preview();
+    emit_changed();
 }
 
 float Simplex::get_lacunarity()
@@ -243,6 +256,8 @@ void Simplex::set_gain(float gain)
 {
     this->noise->mPersistence = gain;
     this->gain = gain;
+    _update_preview();
+    emit_changed();
 }
 
 float Simplex::get_gain()
@@ -250,13 +265,15 @@ float Simplex::get_gain()
     return this->gain;
 }
 
-void godot::Simplex::set_ping_pong_strength(float ping_pong_strength)
+void Simplex::set_ping_pong_strength(float ping_pong_strength)
 {
     this->noise->mPingPongStrength = ping_pong_strength;
     this->pingPongStrength = ping_pong_strength;
+    _update_preview();
+    emit_changed();
 }
 
-float godot::Simplex::get_ping_pong_strength()
+float Simplex::get_ping_pong_strength()
 {
     return this->pingPongStrength;
 }
@@ -264,6 +281,8 @@ float godot::Simplex::get_ping_pong_strength()
 void Simplex::set_octaves(uint16_t octaves)
 {
     this->octaves = octaves;
+    _update_preview();
+    emit_changed();
 }
 
 uint16_t Simplex::get_octaves()
@@ -275,6 +294,7 @@ void Simplex::set_fractal_type(FractalType fractal_type)
 {
     if (this->type != fractal_type) {
         this->type = fractal_type;
+        _update_preview();
         notify_property_list_changed();
     }
     
@@ -285,3 +305,23 @@ Simplex::FractalType Simplex::get_fractal_type()
     return this->type;
 }
 
+
+
+void Simplex::_update_preview()
+{
+    int size = 128;
+    Ref<Image> image = Image::create(size, size, false, Image::FORMAT_L8);
+    
+    for (int y = 0; y < size; y++) {
+        for (int x = 0; x < size; x++) {
+            float n = (get_noise_2d((float)x, (float)y) + 1.0f) * 0.5f;
+            image->set_pixel(x, y, Color(n, n, n));
+        }
+    }
+    
+    if (preview_cache.is_null()) {
+        preview_cache = ImageTexture::create_from_image(image);
+    } else {
+        preview_cache->update(image); // More efficient than creating a new texture
+    }
+}
