@@ -48,8 +48,8 @@ public:
     float pingpong(size_t octaves, float x, float y, float z, int32_t seed) const;
 
     // Domain Warp methods
-    void domainWarp2D(float& x, float& y, int32_t seed) const;
-    void domainWarp3D(float& x, float& y, float& z, int32_t seed) const;
+    void domainWarp2D(float& x, float& y, int32_t seed, size_t octaves) const;
+    void domainWarp3D(float& x, float& y, float& z, int32_t seed, size_t octaves) const;
     
     /**
      * Constructor of to initialize a fractal noise summation

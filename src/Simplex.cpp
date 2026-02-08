@@ -211,8 +211,6 @@ bool Simplex::_set(const StringName &p_name, const Variant &p_value) {
     // Domain Warp setters
     else if (p_name == StringName("domain_warp_enabled")) {
         set_domain_warp_enabled(p_value);
-        _update_preview(); 
-        notify_property_list_changed();
         return true;
     } else if (p_name == StringName("domain_warp_type")) {
         set_domain_warp_type((DomainWarpType)p_value.operator int64_t());
@@ -236,7 +234,6 @@ bool Simplex::_set(const StringName &p_name, const Variant &p_value) {
         set_domain_warp_gain(p_value);
         return true;
     }
-
     return false;
 }
 
@@ -290,7 +287,6 @@ bool Simplex::_get(const StringName &p_name, Variant &r_ret) const {
         r_ret = domain_warp_gain;
         return true;
     }
-
     return false;
 }
 
@@ -335,13 +331,13 @@ float Simplex::get_noise_2dv(const Vector2 &p_v) const
 
     switch (this->type) {
     case FRACTAL_NONE:
-        return this->noise->fractal(1, p_v.x, p_v.y, seed);
+        return this->noise->fractal(1, x, y, seed);
     case FRACTAL_RIDGED:
-        return this->noise->ridged(this->octaves, p_v.x, p_v.y, seed);
+        return this->noise->ridged(this->octaves, x, y, seed);
     case FRACTAL_PING_PONG:
-        return this->noise->pingpong(this->octaves, p_v.x, p_v.y, seed);
+        return this->noise->pingpong(this->octaves, x, y, seed);
     default:
-        return this->noise->fractal(this->octaves, p_v.x, p_v.y, seed);
+        return this->noise->fractal(this->octaves, x, y, seed);
     }
     
 }
@@ -375,16 +371,16 @@ float Simplex::get_noise_3dv(const Vector3 &p_v) const
     if (domain_warp_enabled) {
         _apply_domain_warp_3d(x, y, z);
     }
-    
+
     switch (this->type) {
     case FRACTAL_NONE:
-        return this->noise->fractal(1, p_v.x, p_v.y, p_v.z, seed);
+        return this->noise->fractal(1, x, y, z, seed);
     case FRACTAL_RIDGED:
-        return this->noise->ridged(this->octaves, p_v.x, p_v.y, p_v.z, seed);
+        return this->noise->ridged(this->octaves, x, y, z, seed);
     case FRACTAL_PING_PONG:
-        return this->noise->pingpong(this->octaves, p_v.x, p_v.y, p_v.z, seed);
+        return this->noise->pingpong(this->octaves, x, y, z, seed);
     default:
-        return this->noise->fractal(this->octaves, p_v.x, p_v.y, p_v.z, seed);
+        return this->noise->fractal(this->octaves, x, y, z, seed);
     }
 }
 
@@ -469,6 +465,7 @@ void Simplex::set_fractal_type(FractalType fractal_type)
         this->type = fractal_type;
         _update_preview();
         notify_property_list_changed();
+        emit_changed();
     }
     
 }
@@ -478,13 +475,17 @@ Simplex::FractalType Simplex::get_fractal_type()
     return this->type;
 }
 
-// Domain Warp property implementations
+// ============================================================================
+// DOMAIN WARP PROPERTY IMPLEMENTATIONS
+// ============================================================================
+
 void Simplex::set_domain_warp_enabled(bool enabled)
 {
     if (this->domain_warp_enabled != enabled) {
         this->domain_warp_enabled = enabled;
         _update_preview();
         notify_property_list_changed();
+        emit_changed();
     }
 }
 
@@ -536,6 +537,7 @@ void Simplex::set_domain_warp_fractal_type(DomainWarpFractalType fractal_type)
         this->domain_warp_fractal_type = fractal_type;
         _update_preview();
         notify_property_list_changed();
+        emit_changed();
     }
 }
 
@@ -580,116 +582,140 @@ float Simplex::get_domain_warp_gain()
     return this->domain_warp_gain;
 }
 
-// Domain warp helper methods
+// ============================================================================
+// DOMAIN WARP APPLICATION
+// ============================================================================
+
+/// THREE FRACTAL TYPES:
+/// 1. NONE: Single-pass warp - fast, simple distortion
+/// 2. PROGRESSIVE: Multi-pass warp - applies warping multiple times sequentially, each pass adds more detail. Coordinates accumulate distortion.
+/// 3. INDEPENDENT: Each octave warps independently, then blended together. Creates smoother, more natural-looking warping.
+
 void Simplex::_apply_domain_warp_2d(float& x, float& y) const
 {
-    // Create a temporary noise instance with domain warp settings
-    SimplexNoise domain_warp_noise(domain_warp_frequency, domain_warp_amplitude, 
-                                    domain_warp_lacunarity, domain_warp_gain);
-    
     if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_NONE) {
-        // Simple single-octave domain warp
-        domain_warp_noise.domainWarp2D(x, y, seed);
-    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_PROGRESSIVE) {
-        // Progressive domain warp - apply warping in sequence with increasing frequency
-        float frequency = domain_warp_frequency;
-        float amplitude = domain_warp_amplitude;
-        
+        // Single-pass warp
+        SimplexNoise(domain_warp_frequency, domain_warp_amplitude, domain_warp_lacunarity, domain_warp_gain)
+            .domainWarp2D(x, y, seed, 1);
+        return;
+    }
+
+    float frequency = domain_warp_frequency;
+    float amplitude = domain_warp_amplitude;
+
+    if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_PROGRESSIVE) {
+        // Progressive: accumulate warps per octave
         for (uint16_t i = 0; i < domain_warp_octaves; i++) {
-            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
-            temp_noise.domainWarp2D(x, y, seed + i);
+            SimplexNoise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain)
+                .domainWarp2D(x, y, seed + i, 1); // single-pass per octave
             frequency *= domain_warp_lacunarity;
             amplitude *= domain_warp_gain;
         }
-    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_INDEPENDENT) {
-        // Independent domain warp - each octave warps independently and is combined
-        float final_warp_x = 0.0f;
-        float final_warp_y = 0.0f;
-        float frequency = domain_warp_frequency;
-        float amplitude = domain_warp_amplitude;
-        
+    } 
+    else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_INDEPENDENT) {
+        // Independent: warp each octave independently and blend
+        float final_x = 0.f;
+        float final_y = 0.f;
+
         for (uint16_t i = 0; i < domain_warp_octaves; i++) {
             float warp_x = x;
             float warp_y = y;
-            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
-            temp_noise.domainWarp2D(warp_x, warp_y, seed + i);
-            
-            final_warp_x += (warp_x - x) * amplitude;
-            final_warp_y += (warp_y - y) * amplitude;
-            
+
+            SimplexNoise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain)
+                .domainWarp2D(warp_x, warp_y, seed + i, 1);
+
+            final_x += (warp_x - x) * amplitude;
+            final_y += (warp_y - y) * amplitude;
+
             frequency *= domain_warp_lacunarity;
             amplitude *= domain_warp_gain;
         }
-        
-        x += final_warp_x;
-        y += final_warp_y;
+
+        x += final_x;
+        y += final_y;
     }
 }
 
+// Apply 3D domain warping
+// Same logic as 2D but operates on three axes (x, y, z)
 void Simplex::_apply_domain_warp_3d(float& x, float& y, float& z) const
 {
-    // Create a temporary noise instance with domain warp settings
-    SimplexNoise domain_warp_noise(domain_warp_frequency, domain_warp_amplitude, 
-                                    domain_warp_lacunarity, domain_warp_gain);
-    
     if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_NONE) {
-        // Simple single-octave domain warp
-        domain_warp_noise.domainWarp3D(x, y, z, seed);
-    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_PROGRESSIVE) {
-        // Progressive domain warp - apply warping in sequence with increasing frequency
-        float frequency = domain_warp_frequency;
-        float amplitude = domain_warp_amplitude;
-        
+        SimplexNoise(domain_warp_frequency, domain_warp_amplitude, domain_warp_lacunarity, domain_warp_gain)
+            .domainWarp3D(x, y, z, seed, 1);
+        return;
+    }
+
+    float frequency = domain_warp_frequency;
+    float amplitude = domain_warp_amplitude;
+
+    if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_PROGRESSIVE) {
+        // Progressive: accumulate warps per octave
         for (uint16_t i = 0; i < domain_warp_octaves; i++) {
-            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
-            temp_noise.domainWarp3D(x, y, z, seed + i);
+            SimplexNoise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain)
+                .domainWarp3D(x, y, z, seed + i, 1); // single-pass per octave
             frequency *= domain_warp_lacunarity;
             amplitude *= domain_warp_gain;
         }
-    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_INDEPENDENT) {
-        // Independent domain warp - each octave warps independently and is combined
-        float final_warp_x = 0.0f;
-        float final_warp_y = 0.0f;
-        float final_warp_z = 0.0f;
-        float frequency = domain_warp_frequency;
-        float amplitude = domain_warp_amplitude;
-        
+    } 
+    else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_INDEPENDENT) {
+        // Independent: warp each octave independently and blend
+        float final_x = 0.f;
+        float final_y = 0.f;
+        float final_z = 0.f;
+
         for (uint16_t i = 0; i < domain_warp_octaves; i++) {
             float warp_x = x;
             float warp_y = y;
             float warp_z = z;
-            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
-            temp_noise.domainWarp3D(warp_x, warp_y, warp_z, seed + i);
-            
-            final_warp_x += (warp_x - x) * amplitude;
-            final_warp_y += (warp_y - y) * amplitude;
-            final_warp_z += (warp_z - z) * amplitude;
-            
+
+            SimplexNoise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain)
+                .domainWarp3D(warp_x, warp_y, warp_z, seed + i, 1);
+
+            final_x += (warp_x - x) * amplitude;
+            final_y += (warp_y - y) * amplitude;
+            final_z += (warp_z - z) * amplitude;
+
             frequency *= domain_warp_lacunarity;
             amplitude *= domain_warp_gain;
         }
-        
-        x += final_warp_x;
-        y += final_warp_y;
-        z += final_warp_z;
+
+        x += final_x;
+        y += final_y;
+        z += final_z;
     }
 }
 
+// ============================================================================
+// IMAGE PREVIEW GENERATION
+// ============================================================================
+
+/// Generate 128x128 preview texture
+/// SHOULD update in real-time as settings change, but does not reflect it yet (i think)
+
 void Simplex::_update_preview()
 {
-    int size = 128;
+    const int size = 128;  // Preview resolution (128x128 pixels)
+    
+    // Create image for the preview texture
     Ref<Image> image = Image::create(size, size, false, Image::FORMAT_L8);
     
+    // Sample noise at each pixel and convert to grayscale
     for (int y = 0; y < size; y++) {
         for (int x = 0; x < size; x++) {
+            // Get noise value at this position, normalized to [0, 1]
             float n = (get_noise_2d((float)x, (float)y) + 1.0f) * 0.5f;
+            // Set pixel to grayscale color
             image->set_pixel(x, y, Color(n, n, n));
         }
     }
     
+    // Cache the texture for display in inspector
     if (preview_cache.is_null()) {
+        // First time: create new texture
         preview_cache = ImageTexture::create_from_image(image);
     } else {
-        preview_cache->update(image); // More efficient than creating a new texture
+        // Subsequent times: update existing texture (more efficient)
+        preview_cache->update(image);
     }
 }

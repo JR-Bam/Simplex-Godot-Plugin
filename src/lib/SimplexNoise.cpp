@@ -577,47 +577,65 @@ float SimplexNoise::calcFractalBounding(size_t octaves) const
 }
 
 /**
- * Domain Warp 2D using Simplex noise
- * Distorts 2D coordinates by sampling noise at those coordinates
+ * Domain Warp 2D using fractal Simplex noise
+ * Matches FastNoiseLite's approach with multiple octaves and axis decorrelation
  *
  * @param[in,out] x    x coordinate to be warped
  * @param[in,out] y    y coordinate to be warped
  * @param[in] seed     Seed value for noise variation
+ * @param[in] octaves  Number of octaves to use in the warp (default = 3)
  */
-void SimplexNoise::domainWarp2D(float& x, float& y, int32_t seed) const
+void SimplexNoise::domainWarp2D(float& x, float& y, int32_t seed, size_t octaves) const
 {
-    float frequency = mFrequency;
-    float amplitude = mAmplitude;
+    float freq = mFrequency;
+    float amp  = mAmplitude;
 
-    // First noise value for x warping
-    float warp_x = noise(x * frequency, y * frequency, seed) * amplitude;
-    // Second noise value for y warping (offset by 0.5 for variation)
-    float warp_y = noise((x + 0.5f) * frequency, (y + 0.5f) * frequency, seed) * amplitude;
+    float origX = x;
+    float origY = y;
 
-    x += warp_x;
-    y += warp_y;
+    for (size_t i = 0; i < octaves; i++) {
+        // Sample noise for x and y axes separately with offsets for decorrelation
+        float nx = noise(origX * freq, origY * freq, seed + int(i * 100)) * amp;
+        float ny = noise((origX + 31.0f) * freq, (origY + 47.0f) * freq, seed + int(i * 100)) * amp;
+
+        x += nx;
+        y += ny;
+
+        freq *= mLacunarity;
+        amp  *= mPersistence;
+    }
 }
 
 /**
- * Domain Warp 3D using Simplex noise
- * Distorts 3D coordinates by sampling noise at those coordinates
+ * Domain Warp 3D using fractal Simplex noise
+ * Matches FastNoiseLite's approach with multiple octaves and axis decorrelation
  *
  * @param[in,out] x    x coordinate to be warped
  * @param[in,out] y    y coordinate to be warped
  * @param[in,out] z    z coordinate to be warped
  * @param[in] seed     Seed value for noise variation
+ * @param[in] octaves  Number of octaves to use in the warp (default = 3)
  */
-void SimplexNoise::domainWarp3D(float& x, float& y, float& z, int32_t seed) const
+void SimplexNoise::domainWarp3D(float& x, float& y, float& z, int32_t seed, size_t octaves) const
 {
-    float frequency = mFrequency;
-    float amplitude = mAmplitude;
+    float freq = mFrequency;
+    float amp  = mAmplitude;
 
-    // Three noise values for x, y, z warping
-    float warp_x = noise(x * frequency, y * frequency, z * frequency, seed) * amplitude;
-    float warp_y = noise((x + 0.5f) * frequency, (y + 0.5f) * frequency, (z + 0.5f) * frequency, seed) * amplitude;
-    float warp_z = noise((x + 1.0f) * frequency, (y + 1.0f) * frequency, (z + 1.0f) * frequency, seed) * amplitude;
+    float origX = x;
+    float origY = y;
+    float origZ = z;
 
-    x += warp_x;
-    y += warp_y;
-    z += warp_z;
+    for (size_t i = 0; i < octaves; i++) {
+        // Sample noise for x, y, z axes separately with offsets for decorrelation
+        float nx = noise(origX * freq, origY * freq, origZ * freq, seed + int(i * 100)) * amp;
+        float ny = noise((origX + 31.0f) * freq, (origY + 47.0f) * freq, (origZ + 59.0f) * freq, seed + int(i * 100)) * amp;
+        float nz = noise((origX + 71.0f) * freq, (origY + 97.0f) * freq, (origZ + 101.0f) * freq, seed + int(i * 100)) * amp;
+
+        x += nx;
+        y += ny;
+        z += nz;
+
+        freq *= mLacunarity;
+        amp  *= mPersistence;
+    }
 }
