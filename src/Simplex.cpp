@@ -163,15 +163,15 @@ bool Simplex::_property_get_revert(const StringName &p_property, Variant &r_ret)
         return true;
     }
     if (p_property == StringName("domain_warp_amplitude")) {
-        r_ret = 1.0f;
+        r_ret = 30.0f;
         return true;
     }
     if (p_property == StringName("domain_warp_frequency")) {
-        r_ret = 0.5f;
+        r_ret = 0.05f;
         return true;
     }
     if (p_property == StringName("domain_warp_fractal_type")) {
-        r_ret = (int)DOMAIN_WARP_FRACTAL_NONE;
+        r_ret = (int)DOMAIN_WARP_FRACTAL_PROGRESSIVE;
         return true;
     }
     if (p_property == StringName("domain_warp_octaves")) {
@@ -179,7 +179,7 @@ bool Simplex::_property_get_revert(const StringName &p_property, Variant &r_ret)
         return true;
     }
     if (p_property == StringName("domain_warp_lacunarity")) {
-        r_ret = 2.0f;
+        r_ret = 6.0f;
         return true;
     }
     if (p_property == StringName("domain_warp_gain")) {
