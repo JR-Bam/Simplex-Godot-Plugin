@@ -10,7 +10,7 @@
 namespace godot
 {
     class Simplex : public Resource {
-        GDCLASS(Simplex, Resource);
+        GDCLASS(Simplex, Resource)
 
     protected:
         static void _bind_methods();
