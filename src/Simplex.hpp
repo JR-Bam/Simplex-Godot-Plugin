@@ -10,7 +10,7 @@
 namespace godot
 {
     class Simplex : public Resource {
-        GDCLASS(Simplex, Resource)
+        GDCLASS(Simplex, Resource);
 
     protected:
         static void _bind_methods();
@@ -26,6 +26,16 @@ namespace godot
             FRACTAL_FBM = 1,
             FRACTAL_RIDGED = 2,
             FRACTAL_PING_PONG = 3,
+        };
+
+        enum DomainWarpType {
+            DOMAIN_WARP_SIMPLEX = 0,
+        };
+
+        enum DomainWarpFractalType {
+            DOMAIN_WARP_FRACTAL_NONE = 0,
+            DOMAIN_WARP_FRACTAL_PROGRESSIVE = 1,
+            DOMAIN_WARP_FRACTAL_INDEPENDENT = 2,
         };
 
         float get_noise_1d(float p_x) const;
@@ -52,6 +62,25 @@ namespace godot
         uint16_t get_octaves();
         void set_fractal_type(FractalType fractal_type);
         FractalType get_fractal_type();
+
+        // Domain Warp properties
+        void set_domain_warp_enabled(bool enabled);
+        bool get_domain_warp_enabled();
+        void set_domain_warp_type(DomainWarpType type);
+        DomainWarpType get_domain_warp_type();
+        void set_domain_warp_amplitude(float amplitude);
+        float get_domain_warp_amplitude();
+        void set_domain_warp_frequency(float frequency);
+        float get_domain_warp_frequency();
+        void set_domain_warp_fractal_type(DomainWarpFractalType fractal_type);
+        DomainWarpFractalType get_domain_warp_fractal_type();
+        void set_domain_warp_octaves(uint16_t octaves);
+        uint16_t get_domain_warp_octaves();
+        void set_domain_warp_lacunarity(float lacunarity);
+        float get_domain_warp_lacunarity();
+        void set_domain_warp_gain(float gain);
+        float get_domain_warp_gain();
+
     private:
         std::unique_ptr<SimplexNoise> noise;
         int32_t seed;
@@ -62,9 +91,25 @@ namespace godot
         float pingPongStrength;
         FractalType type;
 
+        // Domain Warp properties
+        bool domain_warp_enabled;
+        DomainWarpType domain_warp_type;
+        float domain_warp_amplitude;
+        float domain_warp_frequency;
+        DomainWarpFractalType domain_warp_fractal_type;
+        uint16_t domain_warp_octaves;
+        float domain_warp_lacunarity;
+        float domain_warp_gain;
+
+        // Helper methods
+        void _apply_domain_warp_2d(float& x, float& y) const;
+        void _apply_domain_warp_3d(float& x, float& y, float& z) const;
+
         Ref<ImageTexture> preview_cache; 
         void _update_preview(); // Helper to refresh the cache
     };
 } // namespace godot
 
 VARIANT_ENUM_CAST(Simplex::FractalType);
+VARIANT_ENUM_CAST(Simplex::DomainWarpType);
+VARIANT_ENUM_CAST(Simplex::DomainWarpFractalType);

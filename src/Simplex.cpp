@@ -26,6 +26,23 @@ void Simplex::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_ping_pong_strength", "ping_pong_strength"), &Simplex::set_ping_pong_strength);
     ClassDB::bind_method(D_METHOD("get_ping_pong_strength"), &Simplex::get_ping_pong_strength);
 
+    // Domain Warp binding
+    ClassDB::bind_method(D_METHOD("set_domain_warp_enabled", "enabled"), &Simplex::set_domain_warp_enabled);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_enabled"), &Simplex::get_domain_warp_enabled);
+    ClassDB::bind_method(D_METHOD("set_domain_warp_type", "type"), &Simplex::set_domain_warp_type);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_type"), &Simplex::get_domain_warp_type);
+    ClassDB::bind_method(D_METHOD("set_domain_warp_amplitude", "amplitude"), &Simplex::set_domain_warp_amplitude);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_amplitude"), &Simplex::get_domain_warp_amplitude);
+    ClassDB::bind_method(D_METHOD("set_domain_warp_frequency", "frequency"), &Simplex::set_domain_warp_frequency);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_frequency"), &Simplex::get_domain_warp_frequency);
+    ClassDB::bind_method(D_METHOD("set_domain_warp_fractal_type", "fractal_type"), &Simplex::set_domain_warp_fractal_type);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_fractal_type"), &Simplex::get_domain_warp_fractal_type);
+    ClassDB::bind_method(D_METHOD("set_domain_warp_octaves", "octaves"), &Simplex::set_domain_warp_octaves);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_octaves"), &Simplex::get_domain_warp_octaves);
+    ClassDB::bind_method(D_METHOD("set_domain_warp_lacunarity", "lacunarity"), &Simplex::set_domain_warp_lacunarity);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_lacunarity"), &Simplex::get_domain_warp_lacunarity);
+    ClassDB::bind_method(D_METHOD("set_domain_warp_gain", "gain"), &Simplex::set_domain_warp_gain);
+    ClassDB::bind_method(D_METHOD("get_domain_warp_gain"), &Simplex::get_domain_warp_gain);
 
     // Static Properties
     ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
@@ -38,6 +55,12 @@ void Simplex::_bind_methods()
     BIND_ENUM_CONSTANT(FRACTAL_FBM);
     BIND_ENUM_CONSTANT(FRACTAL_RIDGED);
     BIND_ENUM_CONSTANT(FRACTAL_PING_PONG);
+
+    // Domain Warp Enums
+    BIND_ENUM_CONSTANT(DOMAIN_WARP_SIMPLEX);
+    BIND_ENUM_CONSTANT(DOMAIN_WARP_FRACTAL_NONE);
+    BIND_ENUM_CONSTANT(DOMAIN_WARP_FRACTAL_PROGRESSIVE);
+    BIND_ENUM_CONSTANT(DOMAIN_WARP_FRACTAL_INDEPENDENT);
 }
 
 void Simplex::_get_property_list(List<PropertyInfo> *p_list) const
@@ -55,6 +78,25 @@ void Simplex::_get_property_list(List<PropertyInfo> *p_list) const
         if (type == FractalType::FRACTAL_PING_PONG)
             p_list->push_back(PropertyInfo(Variant::FLOAT, "fractal_ping_pong_strength"));
     }
+
+    // Domain Warp group
+    p_list->push_back(PropertyInfo(Variant::NIL, "Domain Warp", PROPERTY_HINT_NONE, "domain_warp_", PROPERTY_USAGE_GROUP));
+    p_list->push_back(PropertyInfo(Variant::BOOL, "domain_warp_enabled"));
+
+    if (domain_warp_enabled) {
+        p_list->push_back(PropertyInfo(Variant::INT, "domain_warp_type", PROPERTY_HINT_ENUM, "Simplex"));
+        p_list->push_back(PropertyInfo(Variant::FLOAT, "domain_warp_amplitude"));
+        p_list->push_back(PropertyInfo(Variant::FLOAT, "domain_warp_frequency", 
+            PROPERTY_HINT_RANGE, "0.0001,1,0.0001,exp"));
+        p_list->push_back(PropertyInfo(Variant::INT, "domain_warp_fractal_type", 
+            PROPERTY_HINT_ENUM, "None,Progressive,Independent"));
+
+        if (domain_warp_fractal_type != DomainWarpFractalType::DOMAIN_WARP_FRACTAL_NONE) {
+            p_list->push_back(PropertyInfo(Variant::INT, "domain_warp_octaves"));
+            p_list->push_back(PropertyInfo(Variant::FLOAT, "domain_warp_lacunarity"));
+            p_list->push_back(PropertyInfo(Variant::FLOAT, "domain_warp_gain"));
+        }
+    }
 }
 
 bool Simplex::_property_can_revert(const StringName &p_property) const
@@ -66,6 +108,17 @@ bool Simplex::_property_can_revert(const StringName &p_property) const
     if (p_property == StringName("fractal_ping_pong_strength")) return true;
     if (p_property == StringName("frequency")) return true;
     if (p_property == StringName("seed")) return true;
+
+    // Domain Warp properties
+    if (p_property == StringName("domain_warp_enabled")) return true;
+    if (p_property == StringName("domain_warp_type")) return true;
+    if (p_property == StringName("domain_warp_amplitude")) return true;
+    if (p_property == StringName("domain_warp_frequency")) return true;
+    if (p_property == StringName("domain_warp_fractal_type")) return true;
+    if (p_property == StringName("domain_warp_octaves")) return true;
+    if (p_property == StringName("domain_warp_lacunarity")) return true;
+    if (p_property == StringName("domain_warp_gain")) return true;
+
     return false;
 }
 
@@ -99,6 +152,41 @@ bool Simplex::_property_get_revert(const StringName &p_property, Variant &r_ret)
         r_ret = 0;
         return true;
     }
+
+    // Domain Warp defaults
+    if (p_property == StringName("domain_warp_enabled")) {
+        r_ret = false;
+        return true;
+    }
+    if (p_property == StringName("domain_warp_type")) {
+        r_ret = (int)DOMAIN_WARP_SIMPLEX;
+        return true;
+    }
+    if (p_property == StringName("domain_warp_amplitude")) {
+        r_ret = 1.0f;
+        return true;
+    }
+    if (p_property == StringName("domain_warp_frequency")) {
+        r_ret = 0.5f;
+        return true;
+    }
+    if (p_property == StringName("domain_warp_fractal_type")) {
+        r_ret = (int)DOMAIN_WARP_FRACTAL_NONE;
+        return true;
+    }
+    if (p_property == StringName("domain_warp_octaves")) {
+        r_ret = 5;
+        return true;
+    }
+    if (p_property == StringName("domain_warp_lacunarity")) {
+        r_ret = 2.0f;
+        return true;
+    }
+    if (p_property == StringName("domain_warp_gain")) {
+        r_ret = 0.5f;
+        return true;
+    }
+
     return false;
 }
 
@@ -119,6 +207,36 @@ bool Simplex::_set(const StringName &p_name, const Variant &p_value) {
         set_ping_pong_strength(p_value);
         return true;
     }
+
+    // Domain Warp setters
+    else if (p_name == StringName("domain_warp_enabled")) {
+        set_domain_warp_enabled(p_value);
+        _update_preview(); 
+        notify_property_list_changed();
+        return true;
+    } else if (p_name == StringName("domain_warp_type")) {
+        set_domain_warp_type((DomainWarpType)p_value.operator int64_t());
+        return true;
+    } else if (p_name == StringName("domain_warp_amplitude")) {
+        set_domain_warp_amplitude(p_value);
+        return true;
+    } else if (p_name == StringName("domain_warp_frequency")) {
+        set_domain_warp_frequency(p_value);
+        return true;
+    } else if (p_name == StringName("domain_warp_fractal_type")) {
+        set_domain_warp_fractal_type((DomainWarpFractalType)p_value.operator int64_t());
+        return true;
+    } else if (p_name == StringName("domain_warp_octaves")) {
+        set_domain_warp_octaves(p_value);
+        return true;
+    } else if (p_name == StringName("domain_warp_lacunarity")) {
+        set_domain_warp_lacunarity(p_value);
+        return true;
+    } else if (p_name == StringName("domain_warp_gain")) {
+        set_domain_warp_gain(p_value);
+        return true;
+    }
+
     return false;
 }
 
@@ -145,6 +263,34 @@ bool Simplex::_get(const StringName &p_name, Variant &r_ret) const {
         r_ret = preview_cache;
         return true;
     }
+
+    // Domain Warp getters
+    else if (p_name == StringName("domain_warp_enabled")) {
+        r_ret = domain_warp_enabled;
+        return true;
+    } else if (p_name == StringName("domain_warp_type")) {
+        r_ret = (int)domain_warp_type;
+        return true;
+    } else if (p_name == StringName("domain_warp_amplitude")) {
+        r_ret = domain_warp_amplitude;
+        return true;
+    } else if (p_name == StringName("domain_warp_frequency")) {
+        r_ret = domain_warp_frequency;
+        return true;
+    } else if (p_name == StringName("domain_warp_fractal_type")) {
+        r_ret = (int)domain_warp_fractal_type;
+        return true;
+    } else if (p_name == StringName("domain_warp_octaves")) {
+        r_ret = domain_warp_octaves;
+        return true;
+    } else if (p_name == StringName("domain_warp_lacunarity")) {
+        r_ret = domain_warp_lacunarity;
+        return true;
+    } else if (p_name == StringName("domain_warp_gain")) {
+        r_ret = domain_warp_gain;
+        return true;
+    }
+
     return false;
 }
 
@@ -160,6 +306,11 @@ float Simplex::get_noise_1d(float p_x) const
 
 float Simplex::get_noise_2d(float p_x, float p_y) const
 {
+    // Apply domain warp if enabled
+    if (domain_warp_enabled) {
+        _apply_domain_warp_2d(p_x, p_y);
+    }
+
     switch (this->type) {
     case FRACTAL_NONE:
         return this->noise->fractal(1, p_x, p_y, seed);
@@ -174,6 +325,14 @@ float Simplex::get_noise_2d(float p_x, float p_y) const
 
 float Simplex::get_noise_2dv(const Vector2 &p_v) const
 {
+    float x = p_v.x;
+    float y = p_v.y;
+
+    // Apply domain warp if enabled
+    if (domain_warp_enabled) {
+        _apply_domain_warp_2d(x, y);
+    }
+
     switch (this->type) {
     case FRACTAL_NONE:
         return this->noise->fractal(1, p_v.x, p_v.y, seed);
@@ -189,6 +348,11 @@ float Simplex::get_noise_2dv(const Vector2 &p_v) const
 
 float Simplex::get_noise_3d(float p_x, float p_y, float p_z) const
 {
+    // Apply domain warp if enabled
+    if (domain_warp_enabled) {
+        _apply_domain_warp_3d(p_x, p_y, p_z);
+    }
+
     switch (this->type) {
     case FRACTAL_NONE:
         return this->noise->fractal(1, p_x, p_y, p_z, seed);
@@ -203,6 +367,15 @@ float Simplex::get_noise_3d(float p_x, float p_y, float p_z) const
 
 float Simplex::get_noise_3dv(const Vector3 &p_v) const
 {
+    float x = p_v.x;
+    float y = p_v.y;
+    float z = p_v.z;
+
+    // Apply domain warp if enabled
+    if (domain_warp_enabled) {
+        _apply_domain_warp_3d(x, y, z);
+    }
+    
     switch (this->type) {
     case FRACTAL_NONE:
         return this->noise->fractal(1, p_v.x, p_v.y, p_v.z, seed);
@@ -305,7 +478,202 @@ Simplex::FractalType Simplex::get_fractal_type()
     return this->type;
 }
 
+// Domain Warp property implementations
+void Simplex::set_domain_warp_enabled(bool enabled)
+{
+    if (this->domain_warp_enabled != enabled) {
+        this->domain_warp_enabled = enabled;
+        _update_preview();
+        notify_property_list_changed();
+    }
+}
 
+bool Simplex::get_domain_warp_enabled()
+{
+    return this->domain_warp_enabled;
+}
+
+void Simplex::set_domain_warp_type(DomainWarpType type)
+{
+    this->domain_warp_type = type;
+    _update_preview();
+    emit_changed();
+}
+
+Simplex::DomainWarpType Simplex::get_domain_warp_type()
+{
+    return this->domain_warp_type;
+}
+
+void Simplex::set_domain_warp_amplitude(float amplitude)
+{
+    this->domain_warp_amplitude = amplitude;
+    _update_preview();
+    emit_changed();
+}
+
+float Simplex::get_domain_warp_amplitude()
+{
+    return this->domain_warp_amplitude;
+}
+
+void Simplex::set_domain_warp_frequency(float frequency)
+{
+    float freq = CLAMP(frequency, 0.0f, 1.0f);
+    this->domain_warp_frequency = freq;
+    _update_preview();
+    emit_changed();
+}
+
+float Simplex::get_domain_warp_frequency()
+{
+    return this->domain_warp_frequency;
+}
+
+void Simplex::set_domain_warp_fractal_type(DomainWarpFractalType fractal_type)
+{
+    if (this->domain_warp_fractal_type != fractal_type) {
+        this->domain_warp_fractal_type = fractal_type;
+        _update_preview();
+        notify_property_list_changed();
+    }
+}
+
+Simplex::DomainWarpFractalType Simplex::get_domain_warp_fractal_type()
+{
+    return this->domain_warp_fractal_type;
+}
+
+void Simplex::set_domain_warp_octaves(uint16_t octaves)
+{
+    this->domain_warp_octaves = octaves;
+    _update_preview();
+    emit_changed();
+}
+
+uint16_t Simplex::get_domain_warp_octaves()
+{
+    return this->domain_warp_octaves;
+}
+
+void Simplex::set_domain_warp_lacunarity(float lacunarity)
+{
+    this->domain_warp_lacunarity = lacunarity;
+    _update_preview();
+    emit_changed();
+}
+
+float Simplex::get_domain_warp_lacunarity()
+{
+    return this->domain_warp_lacunarity;
+}
+
+void Simplex::set_domain_warp_gain(float gain)
+{
+    this->domain_warp_gain = gain;
+    _update_preview();
+    emit_changed();
+}
+
+float Simplex::get_domain_warp_gain()
+{
+    return this->domain_warp_gain;
+}
+
+// Domain warp helper methods
+void Simplex::_apply_domain_warp_2d(float& x, float& y) const
+{
+    // Create a temporary noise instance with domain warp settings
+    SimplexNoise domain_warp_noise(domain_warp_frequency, domain_warp_amplitude, 
+                                    domain_warp_lacunarity, domain_warp_gain);
+    
+    if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_NONE) {
+        // Simple single-octave domain warp
+        domain_warp_noise.domainWarp2D(x, y, seed);
+    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_PROGRESSIVE) {
+        // Progressive domain warp - apply warping in sequence with increasing frequency
+        float frequency = domain_warp_frequency;
+        float amplitude = domain_warp_amplitude;
+        
+        for (uint16_t i = 0; i < domain_warp_octaves; i++) {
+            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
+            temp_noise.domainWarp2D(x, y, seed + i);
+            frequency *= domain_warp_lacunarity;
+            amplitude *= domain_warp_gain;
+        }
+    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_INDEPENDENT) {
+        // Independent domain warp - each octave warps independently and is combined
+        float final_warp_x = 0.0f;
+        float final_warp_y = 0.0f;
+        float frequency = domain_warp_frequency;
+        float amplitude = domain_warp_amplitude;
+        
+        for (uint16_t i = 0; i < domain_warp_octaves; i++) {
+            float warp_x = x;
+            float warp_y = y;
+            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
+            temp_noise.domainWarp2D(warp_x, warp_y, seed + i);
+            
+            final_warp_x += (warp_x - x) * amplitude;
+            final_warp_y += (warp_y - y) * amplitude;
+            
+            frequency *= domain_warp_lacunarity;
+            amplitude *= domain_warp_gain;
+        }
+        
+        x += final_warp_x;
+        y += final_warp_y;
+    }
+}
+
+void Simplex::_apply_domain_warp_3d(float& x, float& y, float& z) const
+{
+    // Create a temporary noise instance with domain warp settings
+    SimplexNoise domain_warp_noise(domain_warp_frequency, domain_warp_amplitude, 
+                                    domain_warp_lacunarity, domain_warp_gain);
+    
+    if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_NONE) {
+        // Simple single-octave domain warp
+        domain_warp_noise.domainWarp3D(x, y, z, seed);
+    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_PROGRESSIVE) {
+        // Progressive domain warp - apply warping in sequence with increasing frequency
+        float frequency = domain_warp_frequency;
+        float amplitude = domain_warp_amplitude;
+        
+        for (uint16_t i = 0; i < domain_warp_octaves; i++) {
+            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
+            temp_noise.domainWarp3D(x, y, z, seed + i);
+            frequency *= domain_warp_lacunarity;
+            amplitude *= domain_warp_gain;
+        }
+    } else if (domain_warp_fractal_type == DomainWarpFractalType::DOMAIN_WARP_FRACTAL_INDEPENDENT) {
+        // Independent domain warp - each octave warps independently and is combined
+        float final_warp_x = 0.0f;
+        float final_warp_y = 0.0f;
+        float final_warp_z = 0.0f;
+        float frequency = domain_warp_frequency;
+        float amplitude = domain_warp_amplitude;
+        
+        for (uint16_t i = 0; i < domain_warp_octaves; i++) {
+            float warp_x = x;
+            float warp_y = y;
+            float warp_z = z;
+            SimplexNoise temp_noise(frequency, amplitude, domain_warp_lacunarity, domain_warp_gain);
+            temp_noise.domainWarp3D(warp_x, warp_y, warp_z, seed + i);
+            
+            final_warp_x += (warp_x - x) * amplitude;
+            final_warp_y += (warp_y - y) * amplitude;
+            final_warp_z += (warp_z - z) * amplitude;
+            
+            frequency *= domain_warp_lacunarity;
+            amplitude *= domain_warp_gain;
+        }
+        
+        x += final_warp_x;
+        y += final_warp_y;
+        z += final_warp_z;
+    }
+}
 
 void Simplex::_update_preview()
 {
