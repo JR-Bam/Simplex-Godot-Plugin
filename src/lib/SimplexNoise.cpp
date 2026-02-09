@@ -27,6 +27,7 @@
 #include "SimplexNoise.h"
 
 #include <cstdint>  // int32_t/uint8_t
+#include <cmath>
 
 /**
  * Computes the largest integer value not greater than the float one
@@ -111,6 +112,24 @@ static const float gradients1D[16] = {
          1.f,  2.f,  3.f,  4.f,  5.f,  6.f,  7.f,  8.f
 };
 */
+
+static inline void grad_for_domain_warp(int seed, int hashval, float x, float y, float& wx, float& wy) {
+    float gx = hash(x, seed), gy = hash(y, seed);
+    
+    // Dot product with distance vector
+    float dot = x * gx + y * gy;
+    
+    // Get random vector (different part of hash)
+    int randHash = (hashval >> 4) & 0xFFF;  // Use upper bits
+    float angle = (randHash & 0xFFF) * (6.28318530718f / 4096.0f);
+    
+    float rx = cosf(angle);
+    float ry = sinf(angle);
+    
+    // Combine: (gradient·distance) × random_vector
+    wx = dot * rx;
+    wy = dot * ry;
+}
 
 /**
  * Helper function to compute gradients-dot-residual vectors (1D)
@@ -403,24 +422,33 @@ float SimplexNoise::noise(float x, float y, float z, int32_t seed) {
     return 32.0f*(n0 + n1 + n2 + n3);
 }
 
+void SimplexNoise::transform_domain_warp_coordinate(float &x, float &y)
+{
+    static const float F2 = 0.366025403f;  // F2 = (sqrt(3) - 1) / 2
+    float t = (x + y) * F2;
+    x += t;
+    y += t;
+}
+
+void SimplexNoise::transform_domain_warp_coordinate(float &x, float &y, float &z)
+{
+}
 
 /**
  * Fractal/Fractional Brownian Motion (fBm) summation of 1D Perlin Simplex noise
  *
- * @param[in] octaves number of fraction of noise to sum
  * @param[in] x       float coordinate
- * @param[in] seed    Seed value for noise variation (enables reproducible different noise patterns)
  *
  * @return Noise value in the range[-1; 1], value of 0 on all integer coordinates.
  */
-float SimplexNoise::fractal(size_t octaves, float x, int32_t seed) const {
+float SimplexNoise::fractal(float x) const {
     float output    = 0.f;
     float denom     = 0.f;
     float frequency = mFrequency;
     float amplitude = mAmplitude;
 
-    for (size_t i = 0; i < octaves; i++) {
-        output += (amplitude * noise(x * frequency, seed));
+    for (size_t i = 0; i < mOctaves; i++) {
+        output += (amplitude * noise(x * frequency, mSeed));
         denom += amplitude;
 
         frequency *= mLacunarity;
@@ -440,14 +468,14 @@ float SimplexNoise::fractal(size_t octaves, float x, int32_t seed) const {
  *
  * @return Noise value in the range[-1; 1], value of 0 on all integer coordinates.
  */
-float SimplexNoise::fractal(size_t octaves, float x, float y, int32_t seed) const {
+float SimplexNoise::fractal(float x, float y) const {
     float output = 0.f;
     float denom  = 0.f;
     float frequency = mFrequency;
     float amplitude = mAmplitude;
 
-    for (size_t i = 0; i < octaves; i++) {
-        output += (amplitude * noise(x * frequency, y * frequency, seed));
+    for (size_t i = 0; i < mOctaves; i++) {
+        output += (amplitude * noise(x * frequency, y * frequency, mSeed));
         denom += amplitude;
 
         frequency *= mLacunarity;
@@ -468,14 +496,14 @@ float SimplexNoise::fractal(size_t octaves, float x, float y, int32_t seed) cons
  *
  * @return Noise value in the range[-1; 1], value of 0 on all integer coordinates.
  */
-float SimplexNoise::fractal(size_t octaves, float x, float y, float z, int32_t seed) const {
+float SimplexNoise::fractal(float x, float y, float z) const {
     float output = 0.f;
     float denom  = 0.f;
     float frequency = mFrequency;
     float amplitude = mAmplitude;
 
-    for (size_t i = 0; i < octaves; i++) {
-        output += (amplitude * noise(x * frequency, y * frequency, z * frequency, seed));
+    for (size_t i = 0; i < mOctaves; i++) {
+        output += (amplitude * noise(x * frequency, y * frequency, z * frequency, mSeed));
         denom += amplitude;
 
         frequency *= mLacunarity;
@@ -485,14 +513,14 @@ float SimplexNoise::fractal(size_t octaves, float x, float y, float z, int32_t s
     return (output / denom);
 }
 
-float SimplexNoise::ridged(size_t octaves, float x, float y, int32_t seed) const
+float SimplexNoise::ridged(float x, float y) const
 {
     float sum = 0;
-    float amp = this->calcFractalBounding(octaves);
+    float amp = calcFractalBounding();
 
-    for (int i = 0; i < octaves; i++)
+    for (int i = 0; i < mOctaves; i++)
     {
-        float noise = FastAbs(SimplexNoise::noise(x * mFrequency, y * mFrequency, seed));
+        float noise = FastAbs(SimplexNoise::noise(x * mFrequency, y * mFrequency, mSeed));
         sum += (noise * -2 + 1) * amp;
         amp *= Lerp(1.0f, 1 - noise, 0.f);
 
@@ -504,14 +532,14 @@ float SimplexNoise::ridged(size_t octaves, float x, float y, int32_t seed) const
     return sum;
 }
 
-float SimplexNoise::ridged(size_t octaves, float x, float y, float z, int32_t seed) const
+float SimplexNoise::ridged(float x, float y, float z) const
 {
     float sum = 0;
-    float amp = this->calcFractalBounding(octaves);
+    float amp = calcFractalBounding();
 
-    for (int i = 0; i < octaves; i++)
+    for (int i = 0; i < mOctaves; i++)
     {
-        float noise = FastAbs(SimplexNoise::noise(x * mFrequency, y * mFrequency, z * mFrequency, seed));
+        float noise = FastAbs(SimplexNoise::noise(x * mFrequency, y * mFrequency, z * mFrequency, mSeed));
         sum += (noise * -2 + 1) * amp;
         amp *= Lerp(1.0f, 1 - noise, 0.f);
 
@@ -524,14 +552,14 @@ float SimplexNoise::ridged(size_t octaves, float x, float y, float z, int32_t se
     return sum;
 }
 
-float SimplexNoise::pingpong(size_t octaves, float x, float y, int32_t seed) const
+float SimplexNoise::pingpong(float x, float y) const
 {
     float sum = 0;
-    float amp = this->calcFractalBounding(octaves);
+    float amp = calcFractalBounding();
 
-    for (int i = 0; i < octaves; i++)
+    for (int i = 0; i < mOctaves; i++)
     {
-        float noise = PingPong((SimplexNoise::noise(x * mFrequency, y * mFrequency, seed) + 1) * mPingPongStrength);
+        float noise = PingPong((SimplexNoise::noise(x * mFrequency, y * mFrequency, mSeed) + 1) * mPingPongStrength);
         sum += (noise - 0.5f) * 2 * amp;
         amp *= Lerp(1.0f, noise, 0.f);
 
@@ -543,14 +571,14 @@ float SimplexNoise::pingpong(size_t octaves, float x, float y, int32_t seed) con
     return sum;
 }
 
-float SimplexNoise::pingpong(size_t octaves, float x, float y, float z, int32_t seed) const
+float SimplexNoise::pingpong(float x, float y, float z) const
 {
     float sum = 0;
-    float amp = this->calcFractalBounding(octaves);
+    float amp = calcFractalBounding();
 
-    for (int i = 0; i < octaves; i++)
+    for (int i = 0; i < mOctaves; i++)
     {
-        float noise = PingPong((SimplexNoise::noise(x * mFrequency, y * mFrequency, z * mFrequency, seed) + 1) * mPingPongStrength);
+        float noise = PingPong((SimplexNoise::noise(x * mFrequency, y * mFrequency, z * mFrequency, mSeed) + 1) * mPingPongStrength);
         sum += (noise - 0.5f) * 2 * amp;
         amp *= Lerp(1.0f, noise, 0.f);
 
@@ -563,12 +591,149 @@ float SimplexNoise::pingpong(size_t octaves, float x, float y, float z, int32_t 
     return sum;
 }
 
-float SimplexNoise::calcFractalBounding(size_t octaves) const
+void SimplexNoise::single_domain_warp_gradient(float warpAmp, float x, float y, float &xr, float &yr) const
+{
+    warpAmp *= calcFractalBounding() * 38.283687591552734375f;
+    x *= mDomainWarpFrequency;
+    y *= mDomainWarpFrequency;
+
+    // Skew already done on transform_domain_warp function
+
+    static const float G2 = 0.211324865f;
+
+    const int32_t i = fastfloor(x);
+    const int32_t j = fastfloor(y);
+
+    // Unskew the cell origin back to (x,y) space
+    const float t = static_cast<float>(i + j) * G2;
+    const float X0 = i - t;
+    const float Y0 = j - t;
+    const float x0 = x - X0;  // The x,y distances from the cell origin
+    const float y0 = y - Y0;
+
+    // For the 2D case, the simplex shape is an equilateral triangle.
+    // Determine which simplex we are in.
+    int32_t i1, j1;  // Offsets for second (middle) corner of simplex in (i,j) coords
+    if (x0 > y0) {   // lower triangle, XY order: (0,0)->(1,0)->(1,1)
+        i1 = 1;
+        j1 = 0;
+    } else {   // upper triangle, YX order: (0,0)->(0,1)->(1,1)
+        i1 = 0;
+        j1 = 1;
+    }
+
+    // A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
+    // a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
+    // c = (3-sqrt(3))/6
+
+    const float x1 = x0 - i1 + G2;            // Offsets for middle corner in (x,y) unskewed coords
+    const float y1 = y0 - j1 + G2;
+    const float x2 = x0 - 1.0f + 2.0f * G2;   // Offsets for last corner in (x,y) unskewed coords
+    const float y2 = y0 - 1.0f + 2.0f * G2;
+
+    // Work out the hashed gradient indices of the three simplex corners
+    const int gi0 = hash(i + hash(j, mSeed), mSeed);
+    const int gi1 = hash(i + i1 + hash(j + j1, mSeed), mSeed);
+    const int gi2 = hash(i + 1 + hash(j + 1, mSeed), mSeed);
+
+    float vx = 0.0f, vy = 0.0f;  // Accumulated warp vector
+    
+    // Process each simplex corner
+    // Corner 0
+    float t0 = 0.5f - x0*x0 - y0*y0;
+    if (t0 > 0.0f) {
+        t0 *= t0;
+        float influence = t0 * t0;  // t0⁴ (smooth falloff)
+        
+        // Get warp vector for this corner
+        float wx0, wy0;
+        grad_for_domain_warp(mSeed, gi0, x0, y0, wx0, wy0);
+        
+        vx += influence * wx0;
+        vy += influence * wy0;
+    }
+    
+    // Corner 1
+    float t1 = 0.5f - x1*x1 - y1*y1;
+    if (t1 > 0.0f) {
+        t1 *= t1;
+        float influence = t1 * t1;
+        
+        float wx1, wy1;
+        grad_for_domain_warp(mSeed, gi1, x1, y1, wx1, wy1);
+        
+        vx += influence * wx1;
+        vy += influence * wy1;
+    }
+    
+    // Corner 2
+    float t2 = 0.5f - x2*x2 - y2*y2;
+    if (t2 > 0.0f) {
+        t2 *= t2;
+        float influence = t2 * t2;
+        
+        float wx2, wy2;
+        grad_for_domain_warp(mSeed, gi2, x2, y2, wx2, wy2);
+        
+        vx += influence * wx2;
+        vy += influence * wy2;
+    }
+    
+    // Apply the accumulated warp
+    xr += vx * warpAmp;
+    yr += vy * warpAmp;
+}
+
+void SimplexNoise::progressive_domain_warp_fractal(float &x, float &y) const
+{
+    float seed = mSeed;
+    float warpAmp = mDomainWarpAmplitude;
+    float frequency = mDomainWarpFrequency;
+
+    for (size_t i = 0; i < mOctaves; i++)
+    {
+        float xs = x;
+        float ys = y;
+        transform_domain_warp_coordinate(xs, ys);
+
+        single_domain_warp_gradient(warpAmp, xs, ys, x, y);
+
+        seed++;
+
+        warpAmp *= mDomainWarpFractalGain;
+        frequency *= mDomainWarpFractalLacunarity;
+    }
+    
+}
+
+void SimplexNoise::independent_domain_warp_fractal(float &x, float &y) const
+{
+    float seed = mSeed;
+    float warpAmp = mDomainWarpAmplitude;
+    float frequency = mDomainWarpFrequency;
+
+    float xs = x;
+    float ys = y;
+    transform_domain_warp_coordinate(xs, ys);
+
+    for (size_t i = 0; i < mOctaves; i++)
+    {
+
+        single_domain_warp_gradient(warpAmp, xs, ys, x, y);
+
+        seed++;
+
+        warpAmp *= mDomainWarpFractalGain;
+        frequency *= mDomainWarpFractalLacunarity;
+    }
+}
+
+float SimplexNoise::calcFractalBounding() const
 {
     float gain = FastAbs(mPersistence);
     float amp = gain;
     float ampFractal = 1.0f;
-    for (int i = 1; i < octaves; i++)
+    for (int i = 1; i < mOctaves; i++)
     {
         ampFractal += amp;
         amp *= gain;

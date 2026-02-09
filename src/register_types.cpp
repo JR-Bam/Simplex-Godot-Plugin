@@ -8,15 +8,17 @@
 using namespace godot;
 
 void initialize_simplex_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_CORE) {
 		return;
 	}
 
+	printf("[SimplexNoise] Initializing module...\n");
 	GDREGISTER_CLASS(Simplex);
+	printf("[SimplexNoise] Module initialized.\n");
 }
 
 void uninitialize_simplex_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_CORE) {
 		return;
 	}
 }
@@ -28,7 +30,7 @@ GDExtensionBool GDE_EXPORT simplexnoise(GDExtensionInterfaceGetProcAddress p_get
 
     init_obj.register_initializer(initialize_simplex_module);
     init_obj.register_terminator(uninitialize_simplex_module);
-    init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_SCENE);
+    init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_CORE);
 
     return init_obj.init();
 }

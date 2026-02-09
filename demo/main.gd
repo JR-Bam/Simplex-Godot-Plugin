@@ -2,8 +2,8 @@
 extends Node
 
 var terrain: MeshInstance3D
-@export var noise := Simplex.new()
-@export var fnoise := FastNoiseLite.new()
+@export var noise: Simplex
+@export var fnoise: FastNoiseLite
 var mesh: ArrayMesh
 
 @export var toggle: bool = true:
@@ -25,12 +25,28 @@ var mesh: ArrayMesh
 @export var frequency = 5.0
 
 func _ready() -> void:
+	# Initialize Simplex here, not at parse time
+	if noise == null:
+		noise = Simplex.new()
+	if fnoise == null:
+		fnoise = FastNoiseLite.new()
+	
 	terrain = $Terrain
 	mesh = ArrayMesh.new()  # Create a new instance
 	terrain.mesh = mesh  # Assign it to the MeshInstance3D
 	generate_terrain()
 
 func generate_terrain():
+	# Ensure the node exists before assigning to it
+	if not is_inside_tree() or terrain == null:
+		terrain = get_node_or_null("Main") 
+		if terrain == null: return
+	
+	# Make sure noise is initialized
+	print("Terrain node check: Passed")
+	if noise == null:
+		noise = Simplex.new()
+	
 	# Update mesh properties
 	var plane = PlaneMesh.new()
 	plane.size = Vector2(size, size)
