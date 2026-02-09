@@ -488,11 +488,9 @@ float SimplexNoise::fractal(float x, float y) const {
 /**
  * Fractal/Fractional Brownian Motion (fBm) summation of 3D Perlin Simplex noise
  *
- * @param[in] octaves number of fraction of noise to sum
  * @param[in] x       x float coordinate
  * @param[in] y       y float coordinate
  * @param[in] z       z float coordinate
- * @param[in] seed    Seed value for noise variation (enables reproducible different noise patterns)
  *
  * @return Noise value in the range[-1; 1], value of 0 on all integer coordinates.
  */

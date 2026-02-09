@@ -267,7 +267,7 @@ bool Simplex::_get(const StringName &p_name, Variant &r_ret) const {
         r_ret = this->noise->mDomainWarpFractalOctaves;
         return true;
     } else if (p_name == StringName("domain_warp_lacunarity")) {
-        r_ret = this->noise->mLacunarity;
+        r_ret = this->noise->mDomainWarpFractalLacunarity;
         return true;
     } else if (p_name == StringName("domain_warp_gain")) {
         r_ret = this->noise->mDomainWarpFractalGain;
@@ -343,7 +343,7 @@ float Simplex::get_noise_3dv(const Vector3 &p_v) const
 void Simplex::set_seed(int32_t seed)
 {
     this->noise->mSeed = seed;
-    // _update_preview();
+    _update_preview();
     emit_changed();
 }
 
@@ -355,7 +355,7 @@ int32_t Simplex::get_seed()
 void Simplex::set_frequency(float frequency) {
     float freq = CLAMP(frequency, 0.0f, 1.0f);
     this->noise->mFrequency = freq;
-    // _update_preview();
+    _update_preview();
     emit_changed();
 }
 
