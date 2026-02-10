@@ -46,6 +46,9 @@ func generate_terrain():
 	print("Terrain node check: Passed")
 	if noise == null:
 		noise = Simplex.new()
+	if fnoise == null:
+		fnoise = FastNoiseLite.new()
+		fnoise.frequency_scale = frequency
 	
 	# Update mesh properties
 	var plane = PlaneMesh.new()
@@ -63,7 +66,11 @@ func generate_terrain():
 		var x = vertex.x
 		var z = vertex.z
 		
-		var base_height = noise.get_noise_2d(x, z) * amplitude
+		var base_height: float
+		if toggle:
+			base_height = fnoise.get_noise_2d(x, z) * amplitude
+		else:
+			base_height = noise.get_noise_2d(x, z) * amplitude
 		
 		vertex.y = base_height
 		data_tool.set_vertex(i, vertex)
