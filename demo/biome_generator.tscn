@@ -1,0 +1,102 @@
+[gd_scene load_steps=6 format=3 uid="uid://b5rkv2e2kye5o"]
+
+[ext_resource type="Shader" path="res://biome_generator.gdshader" id="1_pjwtp"]
+[ext_resource type="Texture2D" uid="uid://8xopssarnuhe" path="res://Images/ElevationMap.tres" id="2_kun5i"]
+[ext_resource type="Texture2D" uid="uid://ctgxhb5nre7ba" path="res://Images/HumidityMap.tres" id="3_c3x0d"]
+[ext_resource type="Texture2D" path="res://Images/PrecipitationMap.tres" id="4_xi0jx"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8ngch"]
+shader = ExtResource("1_pjwtp")
+shader_parameter/ocean_color = Vector3(0, 0.3, 0.6)
+shader_parameter/lake_color = Vector3(0.2, 0.5, 0.8)
+shader_parameter/desert_color = Vector3(0.9, 0.8, 0.4)
+shader_parameter/grassland_color = Vector3(0.3, 0.7, 0.2)
+shader_parameter/savanna_color = Vector3(0.8, 0.7, 0.3)
+shader_parameter/tundra_color = Vector3(0.7, 0.7, 0.8)
+shader_parameter/boreal_forest_color = Vector3(0.1, 0.4, 0.2)
+shader_parameter/temperate_forest_color = Vector3(0.2, 0.5, 0.1)
+shader_parameter/rainforest_color = Vector3(0, 0.4, 0)
+shader_parameter/mountain_color = Vector3(0.6, 0.6, 0.6)
+shader_parameter/ocean_e_min = 0.0
+shader_parameter/ocean_e_max = 0.2
+shader_parameter/ocean_p_min = 0.0
+shader_parameter/ocean_p_max = 1.0
+shader_parameter/ocean_h_min = 0.0
+shader_parameter/ocean_h_max = 1.0
+shader_parameter/lake_e_min = 0.0
+shader_parameter/lake_e_max = 0.2
+shader_parameter/lake_p_min = 0.0
+shader_parameter/lake_p_max = 1.0
+shader_parameter/lake_h_min = 0.0
+shader_parameter/lake_h_max = 1.0
+shader_parameter/desert_e_min = 0.0
+shader_parameter/desert_e_max = 0.2
+shader_parameter/desert_p_min = 0.0
+shader_parameter/desert_p_max = 1.0
+shader_parameter/desert_h_min = 0.0
+shader_parameter/desert_h_max = 1.0
+shader_parameter/grassland_e_min = 0.0
+shader_parameter/grassland_e_max = 0.2
+shader_parameter/grassland_p_min = 0.0
+shader_parameter/grassland_p_max = 1.0
+shader_parameter/grassland_h_min = 0.0
+shader_parameter/grassland_h_max = 1.0
+shader_parameter/savanna_e_min = 0.0
+shader_parameter/savanna_e_max = 0.2
+shader_parameter/savanna_p_min = 0.7
+shader_parameter/savanna_p_max = 1.0
+shader_parameter/savanna_h_min = 0.7
+shader_parameter/savanna_h_max = 1.0
+shader_parameter/tundra_e_min = 0.0
+shader_parameter/tundra_e_max = 0.2
+shader_parameter/tundra_p_min = 0.7
+shader_parameter/tundra_p_max = 1.0
+shader_parameter/tundra_h_min = 0.7
+shader_parameter/tundra_h_max = 1.0
+shader_parameter/boreal_forest_e_min = 0.0
+shader_parameter/boreal_forest_e_max = 0.2
+shader_parameter/boreal_forest_p_min = 0.7
+shader_parameter/boreal_forest_p_max = 1.0
+shader_parameter/boreal_forest_h_min = 0.7
+shader_parameter/boreal_forest_h_max = 1.0
+shader_parameter/temperate_forest_e_min = 0.0
+shader_parameter/temperate_forest_e_max = 0.2
+shader_parameter/temperate_forest_p_min = 0.7
+shader_parameter/temperate_forest_p_max = 1.0
+shader_parameter/temperate_forest_h_min = 0.7
+shader_parameter/temperate_forest_h_max = 1.0
+shader_parameter/rainforest_e_min = 0.0
+shader_parameter/rainforest_e_max = 0.2
+shader_parameter/rainforest_p_min = 0.7
+shader_parameter/rainforest_p_max = 1.0
+shader_parameter/rainforest_h_min = 0.7
+shader_parameter/rainforest_h_max = 1.0
+shader_parameter/mountain_e_min = 0.0
+shader_parameter/mountain_e_max = 0.2
+shader_parameter/mountain_p_min = 0.7
+shader_parameter/mountain_p_max = 1.0
+shader_parameter/mountain_h_min = 0.7
+shader_parameter/mountain_h_max = 1.0
+shader_parameter/blend_radius = 0.0
+shader_parameter/elevation_map = ExtResource("2_kun5i")
+shader_parameter/precipitation_map = ExtResource("4_xi0jx")
+shader_parameter/humidity_map = ExtResource("3_c3x0d")
+
+[node name="BiomeGenerator" type="Node2D"]
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+custom_minimum_size = Vector2(500, 500)
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="ColorRect" type="ColorRect" parent="MarginContainer"]
+material = SubResource("ShaderMaterial_8ngch")
+layout_mode = 2
+
+[node name="SubViewport" type="SubViewport" parent="."]
+size = Vector2i(500, 500)
+render_target_update_mode = 4
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.2
+one_shot = true

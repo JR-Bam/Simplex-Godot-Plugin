@@ -1,0 +1,6 @@
+[gd_resource type="NoiseTexture2D" load_steps=2 format=3 uid="uid://c0dva4ipbhjdh"]
+
+[ext_resource type="FastNoiseLite" uid="uid://dahxseh5t2aqn" path="res://terrain_masks/elevation_map/elevation_map_noise.tres" id="1_6x5us"]
+
+[resource]
+noise = ExtResource("1_6x5us")

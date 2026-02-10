@@ -1,10 +1,12 @@
 @tool
 extends Node
 
+class_name WorlConfiguration
+
 var terrain: MeshInstance3D
+var mesh: ArrayMesh
 @export var noise: Simplex
 @export var fnoise: FastNoiseLite
-var mesh: ArrayMesh
 
 @export var toggle: bool = true:
 	set(_toggle):
@@ -24,6 +26,9 @@ var mesh: ArrayMesh
 @export var amplitude = 40
 @export var frequency = 5.0
 
+
+
+
 func _ready() -> void:
 	# Initialize Simplex here, not at parse time
 	if noise == null:
@@ -35,6 +40,10 @@ func _ready() -> void:
 	mesh = ArrayMesh.new()  # Create a new instance
 	terrain.mesh = mesh  # Assign it to the MeshInstance3D
 	generate_terrain()
+
+# ==============================================================
+# Terrain Generation Logic (Toggleable Between Simplex and FNL)
+# ==============================================================
 
 func generate_terrain():
 	# Ensure the node exists before assigning to it
