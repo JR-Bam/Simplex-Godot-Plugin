@@ -10,6 +10,16 @@ void Simplex::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_noise_2dv", "v"), &Simplex::get_noise_2dv);
     ClassDB::bind_method(D_METHOD("get_noise_3dv", "v"), &Simplex::get_noise_3dv);
 
+    // Bind image generation methods
+    ClassDB::bind_method(D_METHOD("get_image", "width", "height", "invert", "in_3d_space", "normalize"), 
+        &Simplex::get_image, DEFVAL(false), DEFVAL(false), DEFVAL(true));
+    ClassDB::bind_method(D_METHOD("get_seamless_image", "width", "height", "invert", "in_3d_space", "skirt", "normalize"), 
+        &Simplex::get_seamless_image, DEFVAL(false), DEFVAL(false), DEFVAL(0.1), DEFVAL(true));
+    ClassDB::bind_method(D_METHOD("get_image_3d", "width", "height", "depth", "invert", "normalize"), 
+        &Simplex::get_image_3d, DEFVAL(false), DEFVAL(true));
+    ClassDB::bind_method(D_METHOD("get_seamless_image_3d", "width", "height", "depth", "invert", "skirt", "normalize"), 
+        &Simplex::get_seamless_image_3d, DEFVAL(false), DEFVAL(0.1), DEFVAL(true));
+
     // Bind setter and getter
     ClassDB::bind_method(D_METHOD("set_seed", "seed"), &Simplex::set_seed);
     ClassDB::bind_method(D_METHOD("get_seed"), &Simplex::get_seed);
@@ -340,6 +350,221 @@ float Simplex::get_noise_3dv(const Vector3 &p_v) const
     }
 }
 
+Ref<Image> Simplex::get_image(int32_t p_width, int32_t p_height, bool p_invert, bool p_in_3d_space, bool p_normalize) const
+{
+    Ref<Image> image = Image::create(p_width, p_height, false, Image::FORMAT_L8);
+    
+    for (int y = 0; y < p_height; y++) {
+        for (int x = 0; x < p_width; x++) {
+            float n;
+            if (p_in_3d_space) {
+                // Use x,z plane with y=0
+                n = get_noise_3d((float)x, 0.0f, (float)y);
+            } else {
+                n = get_noise_2d((float)x, (float)y);
+            }
+            
+            if (p_normalize) {
+                n = (n + 1.0f) * 0.5f;
+            }
+            
+            if (p_invert) {
+                n = 1.0f - n;
+            }
+            
+            n = CLAMP(n, 0.0f, 1.0f);
+            uint8_t value = static_cast<uint8_t>(n * 255.0f);
+            image->set_pixel(x, y, Color(value / 255.0f, value / 255.0f, value / 255.0f));
+        }
+    }
+    
+    return image;
+}
+
+Ref<Image> Simplex::get_seamless_image(int32_t p_width, int32_t p_height, bool p_invert, bool p_in_3d_space, float p_skirt, bool p_normalize) const
+{
+    Ref<Image> image = Image::create(p_width, p_height, false, Image::FORMAT_L8);
+    
+    // Calculate seamless coordinates using skirt to create blending region
+    float scale_x = 1.0f / (p_width - 1);
+    float scale_y = 1.0f / (p_height - 1);
+    float blend_start = p_skirt;
+    float blend_end = 1.0f - p_skirt;
+    
+    for (int y = 0; y < p_height; y++) {
+        float ny = y * scale_y;
+        
+        for (int x = 0; x < p_width; x++) {
+            float nx = x * scale_x;
+            
+            float n;
+            if (p_in_3d_space) {
+                // Map 2D coordinates onto a torus in 3D space for perfect seamless tiling
+                float angle_x = nx * Math_TAU;
+                float angle_y = ny * Math_TAU;
+                float px = Math::cos(angle_x);
+                float pz = Math::sin(angle_x);
+                float py = Math::cos(angle_y);
+                float pw = Math::sin(angle_y);
+                
+                // Use 3D+1 noise by combining coordinates
+                n = get_noise_3d(px * 100.0f, py * 100.0f, pz * 100.0f) * 0.5f +
+                    get_noise_3d(py * 100.0f, pz * 100.0f, pw * 100.0f) * 0.5f;
+            } else {
+                // Blend between four corner samples for seamless 2D
+                float n00 = get_noise_2d(nx, ny);
+                float n10 = get_noise_2d(nx - 1.0f, ny);
+                float n01 = get_noise_2d(nx, ny - 1.0f);
+                float n11 = get_noise_2d(nx - 1.0f, ny - 1.0f);
+                
+                // Blend weights with smoothstep in the skirt region
+                float wx = 1.0f;
+                float wy = 1.0f;
+                
+                if (nx < blend_start) {
+                    wx = Math::smoothstep(0.0f, blend_start, nx);
+                } else if (nx > blend_end) {
+                    wx = 1.0f - Math::smoothstep(blend_end, 1.0f, nx);
+                }
+                
+                if (ny < blend_start) {
+                    wy = Math::smoothstep(0.0f, blend_start, ny);
+                } else if (ny > blend_end) {
+                    wy = 1.0f - Math::smoothstep(blend_end, 1.0f, ny);
+                }
+                
+                // Bilinear interpolation with seamless blending
+                n = Math::lerp(Math::lerp(n00, n10, wx), Math::lerp(n01, n11, wx), wy);
+            }
+            
+            if (p_normalize) {
+                n = (n + 1.0f) * 0.5f;
+            }
+            
+            if (p_invert) {
+                n = 1.0f - n;
+            }
+            
+            n = CLAMP(n, 0.0f, 1.0f);
+            uint8_t value = static_cast<uint8_t>(n * 255.0f);
+            image->set_pixel(x, y, Color(value / 255.0f, value / 255.0f, value / 255.0f));
+        }
+    }
+    
+    return image;
+}
+
+TypedArray<Image> Simplex::get_image_3d(int32_t p_width, int32_t p_height, int32_t p_depth, bool p_invert, bool p_normalize) const
+{
+    TypedArray<Image> images;
+    images.resize(p_depth);
+    
+    for (int z = 0; z < p_depth; z++) {
+        Ref<Image> slice = Image::create(p_width, p_height, false, Image::FORMAT_L8);
+        
+        for (int y = 0; y < p_height; y++) {
+            for (int x = 0; x < p_width; x++) {
+                float n = get_noise_3d((float)x, (float)y, (float)z);
+                
+                if (p_normalize) {
+                    n = (n + 1.0f) * 0.5f;
+                }
+                
+                if (p_invert) {
+                    n = 1.0f - n;
+                }
+                
+                n = CLAMP(n, 0.0f, 1.0f);
+                uint8_t value = static_cast<uint8_t>(n * 255.0f);
+                slice->set_pixel(x, y, Color(value / 255.0f, value / 255.0f, value / 255.0f));
+            }
+        }
+        
+        images[z] = slice;
+    }
+    
+    return images;
+}
+
+TypedArray<Image> Simplex::get_seamless_image_3d(int32_t p_width, int32_t p_height, int32_t p_depth, bool p_invert, float p_skirt, bool p_normalize) const
+{
+    TypedArray<Image> images;
+    images.resize(p_depth);
+    
+    float scale_x = 1.0f / (p_width - 1);
+    float scale_y = 1.0f / (p_height - 1);
+    float scale_z = 1.0f / (p_depth - 1);
+    float blend_start = p_skirt;
+    float blend_end = 1.0f - p_skirt;
+    
+    for (int z = 0; z < p_depth; z++) {
+        float nz = z * scale_z;
+        Ref<Image> slice = Image::create(p_width, p_height, false, Image::FORMAT_L8);
+        
+        for (int y = 0; y < p_height; y++) {
+            float ny = y * scale_y;
+            
+            for (int x = 0; x < p_width; x++) {
+                float nx = x * scale_x;
+                
+                // For 3D seamless, we need to sample 8 corners and blend
+                float n000 = get_noise_3d(nx, ny, nz);
+                float n100 = get_noise_3d(nx - 1.0f, ny, nz);
+                float n010 = get_noise_3d(nx, ny - 1.0f, nz);
+                float n110 = get_noise_3d(nx - 1.0f, ny - 1.0f, nz);
+                float n001 = get_noise_3d(nx, ny, nz - 1.0f);
+                float n101 = get_noise_3d(nx - 1.0f, ny, nz - 1.0f);
+                float n011 = get_noise_3d(nx, ny - 1.0f, nz - 1.0f);
+                float n111 = get_noise_3d(nx - 1.0f, ny - 1.0f, nz - 1.0f);
+                
+                // Calculate blend weights
+                float wx = 1.0f;
+                float wy = 1.0f;
+                float wz = 1.0f;
+                
+                if (nx < blend_start) {
+                    wx = Math::smoothstep(0.0f, blend_start, nx);
+                } else if (nx > blend_end) {
+                    wx = 1.0f - Math::smoothstep(blend_end, 1.0f, nx);
+                }
+                
+                if (ny < blend_start) {
+                    wy = Math::smoothstep(0.0f, blend_start, ny);
+                } else if (ny > blend_end) {
+                    wy = 1.0f - Math::smoothstep(blend_end, 1.0f, ny);
+                }
+                
+                if (nz < blend_start) {
+                    wz = Math::smoothstep(0.0f, blend_start, nz);
+                } else if (nz > blend_end) {
+                    wz = 1.0f - Math::smoothstep(blend_end, 1.0f, nz);
+                }
+                
+                // Trilinear interpolation
+                float n0 = Math::lerp(Math::lerp(n000, n100, wx), Math::lerp(n010, n110, wx), wy);
+                float n1 = Math::lerp(Math::lerp(n001, n101, wx), Math::lerp(n011, n111, wx), wy);
+                float n = Math::lerp(n0, n1, wz);
+                
+                if (p_normalize) {
+                    n = (n + 1.0f) * 0.5f;
+                }
+                
+                if (p_invert) {
+                    n = 1.0f - n;
+                }
+                
+                n = CLAMP(n, 0.0f, 1.0f);
+                uint8_t value = static_cast<uint8_t>(n * 255.0f);
+                slice->set_pixel(x, y, Color(value / 255.0f, value / 255.0f, value / 255.0f));
+            }
+        }
+        
+        images[z] = slice;
+    }
+    
+    return images;
+}
+
 void Simplex::set_seed(int32_t seed)
 {
     this->noise->mSeed = seed;
@@ -366,18 +591,11 @@ float Simplex::get_frequency() {
 void Simplex::_update_preview()
 {
     int size = 128;
-    Ref<Image> image = Image::create(size, size, false, Image::FORMAT_L8);
-    
-    for (int y = 0; y < size; y++) {
-        for (int x = 0; x < size; x++) {
-            float n = (get_noise_2d((float)x, (float)y) + 1.0f) * 0.5f;
-            image->set_pixel(x, y, Color(n, n, n));
-        }
-    }
+    Ref<Image> image = get_image(size, size, false, false, true);
     
     if (preview_cache.is_null()) {
         preview_cache = ImageTexture::create_from_image(image);
     } else {
-        preview_cache->update(image); // More efficient than creating a new texture
+        preview_cache->update(image);
     }
 }
