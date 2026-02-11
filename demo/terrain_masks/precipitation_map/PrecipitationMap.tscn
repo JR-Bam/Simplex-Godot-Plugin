@@ -11,10 +11,6 @@ shader_parameter/noise = ExtResource("3_x3es6")
 [node name="PrecipitationMap" type="Node2D"]
 script = ExtResource("1_4csfc")
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
-offset_right = 500.0
-offset_bottom = 500.0
-
 [node name="SubViewport" type="SubViewport" parent="."]
 size = Vector2i(500, 500)
 render_target_update_mode = 4

@@ -1,28 +1,29 @@
 shader_type canvas_item;
 
 uniform sampler2D elevation_map;
+uniform sampler2D temperature_map;
 uniform sampler2D precipitation_map;
 uniform sampler2D humidity_map;
 
-// Biome Colors Representation
-uniform vec3 ocean_color = vec3(0.0, 0.3, 0.6);            // Deep blue
-uniform vec3 lake_color = vec3(0.2, 0.5, 0.8);             // Light blue
-uniform vec3 desert_color = vec3(0.9, 0.8, 0.4);           // Sandy yellow
-uniform vec3 grassland_color = vec3(0.3, 0.7, 0.2);        // Green
-uniform vec3 savanna_color = vec3(0.8, 0.7, 0.3);          // Golden tan
-uniform vec3 tundra_color = vec3(0.7, 0.7, 0.8);           // Icy gray-blue
-uniform vec3 boreal_forest_color = vec3(0.1, 0.4, 0.2);    // Dark green
-uniform vec3 temperate_forest_color = vec3(0.2, 0.5, 0.1); // Forest green
-uniform vec3 rainforest_color = vec3(0.0, 0.4, 0.0);       // Deep jungle green
-uniform vec3 mountain_color = vec3(0.6, 0.6, 0.6);         // Gray stone
+// Biome Colors Representation - High Contrast Version
+uniform vec3 ocean_color = vec3(0.02, 0.15, 0.45);            // Rich Navy 
+uniform vec3 lake_color = vec3(0.0, 0.6, 0.9);                // Vibrant Cyan 
+uniform vec3 desert_color = vec3(1.0, 0.85, 0.3);             // Bright Gold 
+uniform vec3 grassland_color = vec3(0.4, 0.85, 0.1);          // Lime Green
+uniform vec3 savanna_color = vec3(0.8, 0.6, 0.2);             // Burnt Orange/Ochre 
+uniform vec3 tundra_color = vec3(0.85, 0.9, 1.0);             // Bright Arctic White-Blue
+uniform vec3 boreal_forest_color = vec3(0.05, 0.25, 0.15);    // Deep Pine Green 
+uniform vec3 temperate_forest_color = vec3(0.1, 0.55, 0.05);  // Mid Grass Green
+uniform vec3 rainforest_color = vec3(0.0, 0.35, 0.05);        // Lush Emerald 
+uniform vec3 mountain_color = vec3(0.4, 0.35, 0.3);           // Warm Slate 
 
 // Biome Thresholds
 
 // OCEAN THRESHOLDS
 uniform float ocean_e_min = 0.0;
 uniform float ocean_e_max = 0.2;
-// uniform float ocean_t_min = 0.0;
-// uniform float ocean_t_max = 1.0;
+uniform float ocean_t_min = 0.0;
+uniform float ocean_t_max = 1.0;
 uniform float ocean_p_min = 0.0;
 uniform float ocean_p_max = 1.0;
 uniform float ocean_h_min = 0.0;
@@ -31,8 +32,8 @@ uniform float ocean_h_max = 1.0;
 // LAKE THRESHOLDS
 uniform float lake_e_min = 0.0;
 uniform float lake_e_max = 0.2;
-// uniform float lake_t_min = 0.0;
-// uniform float lake_t_max = 1.0;
+uniform float lake_t_min = 0.0;
+uniform float lake_t_max = 1.0;
 uniform float lake_p_min = 0.7;
 uniform float lake_p_max = 1.0;
 uniform float lake_h_min = 0.7;
@@ -41,8 +42,8 @@ uniform float lake_h_max = 1.0;
 // DESERT THRESHOLDS
 uniform float desert_e_min = 0.2;
 uniform float desert_e_max = 0.8;
-// uniform float desert_t_min = 0.6;
-// uniform float desert_t_max = 1.0;
+uniform float desert_t_min = 0.6;
+uniform float desert_t_max = 1.0;
 uniform float desert_p_min = 0.0;
 uniform float desert_p_max = 0.3;
 uniform float desert_h_min = 0.0;
@@ -51,8 +52,8 @@ uniform float desert_h_max = 0.3;
 // GRASSLAND THRESHOLDS
 uniform float grassland_e_min = 0.2;
 uniform float grassland_e_max = 0.7;
-// uniform float grassland_t_min = 0.3;
-// uniform float grassland_t_max = 0.6;
+uniform float grassland_t_min = 0.3;
+uniform float grassland_t_max = 0.6;
 uniform float grassland_p_min = 0.3;
 uniform float grassland_p_max = 0.6;
 uniform float grassland_h_min = 0.3;
@@ -61,8 +62,8 @@ uniform float grassland_h_max = 0.6;
 // SAVANNA THRESHOLDS
 uniform float savanna_e_min = 0.2;
 uniform float savanna_e_max = 0.5;
-// uniform float savanna_t_min = 0.6;
-// uniform float savanna_t_max = 1.0;
+uniform float savanna_t_min = 0.6;
+uniform float savanna_t_max = 1.0;
 uniform float savanna_p_min = 0.3;
 uniform float savanna_p_max = 0.6;
 uniform float savanna_h_min = 0.3;
@@ -71,8 +72,8 @@ uniform float savanna_h_max = 0.6;
 // TUNDRA THRESHOLDS
 uniform float tundra_e_min = 0.2;
 uniform float tundra_e_max = 0.7;
-// uniform float tundra_t_min = 0.0;
-// uniform float tundra_t_max = 0.3;
+uniform float tundra_t_min = 0.0;
+uniform float tundra_t_max = 0.3;
 uniform float tundra_p_min = 0.0;
 uniform float tundra_p_max = 0.4;
 uniform float tundra_h_min = 0.2;
@@ -81,8 +82,8 @@ uniform float tundra_h_max = 0.4;
 // BOREAL FOREST THRESHOLDS
 uniform float boreal_forest_e_min = 0.3;
 uniform float boreal_forest_e_max = 0.8;
-// uniform float boreal_forest_t_min = 0.0;
-// uniform float boreal_forest_t_max = 0.4;
+uniform float boreal_forest_t_min = 0.0;
+uniform float boreal_forest_t_max = 0.4;
 uniform float boreal_forest_p_min = 0.4;
 uniform float boreal_forest_p_max = 0.7;
 uniform float boreal_forest_h_min = 0.4;
@@ -91,8 +92,8 @@ uniform float boreal_forest_h_max = 0.7;
 // TEMPERATE FOREST THRESHOLDS
 uniform float temperate_forest_e_min = 0.2;
 uniform float temperate_forest_e_max = 0.6;
-// uniform float temperate_forest_t_min = 0.3;
-// uniform float temperate_forest_t_max = 0.6;
+uniform float temperate_forest_t_min = 0.3;
+uniform float temperate_forest_t_max = 0.6;
 uniform float temperate_forest_p_min = 0.5;
 uniform float temperate_forest_p_max = 0.8;
 uniform float temperate_forest_h_min = 0.5;
@@ -101,8 +102,8 @@ uniform float temperate_forest_h_max = 0.8;
 // RAINFOREST THRESHOLDS
 uniform float rainforest_e_min = 0.2;
 uniform float rainforest_e_max = 0.5;
-// uniform float rainforest_t_min = 0.7;
-// uniform float rainforest_t_max = 1.0;
+uniform float rainforest_t_min = 0.7;
+uniform float rainforest_t_max = 1.0;
 uniform float rainforest_p_min = 0.8;
 uniform float rainforest_p_max = 1.0;
 uniform float rainforest_h_min = 0.8;
@@ -111,17 +112,18 @@ uniform float rainforest_h_max = 1.0;
 // MOUNTAIN THRESHOLDS
 uniform float mountain_e_min = 0.7;
 uniform float mountain_e_max = 1.0;
-// uniform float mountain_t_min = 0.0;
-// uniform float mountain_t_max = 0.4;
+uniform float mountain_t_min = 0.0;
+uniform float mountain_t_max = 0.4;
 uniform float mountain_p_min = 0.0;
 uniform float mountain_p_max = 1.0;
 uniform float mountain_h_min = 0.0;
 uniform float mountain_h_max = 1.0;
 
-uniform float blend_radius = 0.2; // Used to smoothly blend biomes together
+uniform float blend_radius = 0.05; // Used to smoothly blend biomes together 
 
 void fragment(){
 	float elevation = texture(elevation_map, UV).r;
+	float temperature = texture(temperature_map, UV).r;
 	float precipitation = texture(precipitation_map, UV).r;
 	float humidity = texture(humidity_map, UV).r;
 	
@@ -141,6 +143,18 @@ void fragment(){
 		ocean_e_max, lake_e_max, desert_e_max, grassland_e_max, savanna_e_max, 
 		tundra_e_max, boreal_forest_e_max, temperate_forest_e_max,
 		rainforest_e_max, mountain_e_max
+	);
+	
+	float min_t[10] = float[10](
+		ocean_t_min, lake_t_min, desert_t_min, grassland_t_min, savanna_t_min, 
+		tundra_t_min, boreal_forest_t_min, temperate_forest_t_min,
+		rainforest_t_min, mountain_t_min
+	);
+	
+	float max_t[10] = float[10](
+		ocean_t_max, lake_t_max, desert_t_max, grassland_t_max, savanna_t_max, 
+		tundra_t_max, boreal_forest_t_max, temperate_forest_t_max,
+		rainforest_t_max, mountain_t_max
 	);
 	
 	float min_p[10] = float[10](
@@ -170,12 +184,21 @@ void fragment(){
 	float weights[10];
 	
 	// NOTE: blend radius formula causes some murky/overlapping transitions, replace with better formula if possible
-		for (int i = 0; i < 10; i++){
+	// HOWEVER, areas in these transitions ensure that areas are not evenly weighted with a mashup of multiple biomes
+	for (int i = 0; i < 10; i++){
 		float e_weight = 0.0;
+		float t_weight = 0.0;
 		float p_weight = 0.0;
 		float h_weight = 0.0;
 		
-		if (precipitation < min_p[i] - blend_radius || precipitation > max_p[i] + blend_radius || humidity < min_h[i] - blend_radius || humidity > max_h[i] + blend_radius){
+		// If all four conditions are active, the biome shader map can have black patches due to NO biome-types falling within those thresholds
+		// This is the most conditions we can fit without patching
+		if (
+			// elevation < min_e[i] - blend_radius || elevation > max_e[i] + blend_radius ||        
+			temperature < min_t[i] - blend_radius || temperature > max_t[i] + blend_radius ||
+			precipitation < min_p[i] - blend_radius || precipitation > max_p[i] + blend_radius ||
+			humidity < min_h[i] - blend_radius || humidity > max_h[i] + blend_radius
+		){
 			weights[i] = 0.0;
 		} else {
 			if (elevation < min_e[i]){
@@ -184,6 +207,14 @@ void fragment(){
 				e_weight = smoothstep(max_e[i] + blend_radius, max_e[i], elevation);
 			} else {
 				e_weight = 1.0;
+			}
+			
+			if (temperature < min_t[i]){
+				t_weight = smoothstep(min_t[i] - blend_radius, min_t[i], temperature);
+			} else if (temperature > max_t[i]){
+				t_weight = smoothstep(max_t[i] + blend_radius, max_t[i], temperature);
+			} else {
+				t_weight = 1.0;
 			}
 			
 			if (precipitation < min_p[i]){
@@ -202,7 +233,7 @@ void fragment(){
 				h_weight = 1.0;
 			}
 			
-			weights[i] = (e_weight + p_weight + h_weight) / 3.0; 
+			weights[i] = (e_weight + t_weight + p_weight + h_weight) / 4.0; 
 		}
 		
 		// Normalize weights to a sum of 1.0

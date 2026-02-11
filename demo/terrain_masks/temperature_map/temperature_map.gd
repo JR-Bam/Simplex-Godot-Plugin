@@ -10,14 +10,14 @@ func _ready():
 	viewport.size = Vector2(wc.size, wc.size)
 	texture = viewport.get_texture()
 	
-	timer.timeout.connect(generate_humidity_map.bind())
+	timer.timeout.connect(generate_temperature_map.bind())
 	timer.start()
 	
-func generate_humidity_map():
+func generate_temperature_map():
 	var image = texture.get_image()
 	var image_texture = ImageTexture.create_from_image(image)
 	
 	# Save texture in this path 
-	var path = "res://Images/HumidityMap.tres"
+	var path = "res://Images/TemperatureMap.tres"
 	ResourceSaver.save(image_texture, path)
-	print("Saved Humidity Map Image")
+	print("Saved Temperature Map Image")
