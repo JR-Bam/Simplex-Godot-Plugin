@@ -19,9 +19,9 @@ uniform vec3 mountain_color = vec3(0.4, 0.35, 0.3);           // Warm Slate
 
 // Biome Thresholds
 
-// OCEAN THRESHOLDS
-uniform float ocean_e_min = 0.0;
-uniform float ocean_e_max = 0.2;
+// OCEAN: Lowered max elevation slightly, kept full range for others to catch all low-lands
+uniform float ocean_e_min = -0.1; // Extended below 0 for safety
+uniform float ocean_e_max = 0.25;
 uniform float ocean_t_min = 0.0;
 uniform float ocean_t_max = 1.0;
 uniform float ocean_p_min = 0.0;
@@ -29,91 +29,91 @@ uniform float ocean_p_max = 1.0;
 uniform float ocean_h_min = 0.0;
 uniform float ocean_h_max = 1.0;
 
-// LAKE THRESHOLDS
+// LAKE: High humidity/precip low-lands
 uniform float lake_e_min = 0.0;
-uniform float lake_e_max = 0.2;
+uniform float lake_e_max = 0.25;
 uniform float lake_t_min = 0.0;
 uniform float lake_t_max = 1.0;
-uniform float lake_p_min = 0.7;
+uniform float lake_p_min = 0.65; // Overlap with Ocean/Forests
 uniform float lake_p_max = 1.0;
-uniform float lake_h_min = 0.7;
+uniform float lake_h_min = 0.65;
 uniform float lake_h_max = 1.0;
 
-// DESERT THRESHOLDS
-uniform float desert_e_min = 0.2;
-uniform float desert_e_max = 0.8;
-uniform float desert_t_min = 0.6;
-uniform float desert_t_max = 1.0;
-uniform float desert_p_min = 0.0;
-uniform float desert_p_max = 0.3;
-uniform float desert_h_min = 0.0;
-uniform float desert_h_max = 0.3;
-
-// GRASSLAND THRESHOLDS
-uniform float grassland_e_min = 0.2;
-uniform float grassland_e_max = 0.7;
-uniform float grassland_t_min = 0.3;
-uniform float grassland_t_max = 0.6;
-uniform float grassland_p_min = 0.3;
-uniform float grassland_p_max = 0.6;
-uniform float grassland_h_min = 0.3;
-uniform float grassland_h_max = 0.6;
-
-// SAVANNA THRESHOLDS
-uniform float savanna_e_min = 0.2;
-uniform float savanna_e_max = 0.5;
-uniform float savanna_t_min = 0.6;
-uniform float savanna_t_max = 1.0;
-uniform float savanna_p_min = 0.3;
-uniform float savanna_p_max = 0.6;
-uniform float savanna_h_min = 0.3;
-uniform float savanna_h_max = 0.6;
-
-// TUNDRA THRESHOLDS
+// TUNDRA: Cold and Dry
 uniform float tundra_e_min = 0.2;
-uniform float tundra_e_max = 0.7;
+uniform float tundra_e_max = 0.75;
 uniform float tundra_t_min = 0.0;
-uniform float tundra_t_max = 0.3;
+uniform float tundra_t_max = 0.35; // Meets Grassland/Boreal
 uniform float tundra_p_min = 0.0;
-uniform float tundra_p_max = 0.4;
-uniform float tundra_h_min = 0.2;
-uniform float tundra_h_max = 0.4;
+uniform float tundra_p_max = 0.45;
+uniform float tundra_h_min = 0.0;
+uniform float tundra_h_max = 0.45;
 
-// BOREAL FOREST THRESHOLDS
-uniform float boreal_forest_e_min = 0.3;
+// BOREAL FOREST: Cold and Moist
+uniform float boreal_forest_e_min = 0.2;
 uniform float boreal_forest_e_max = 0.8;
 uniform float boreal_forest_t_min = 0.0;
-uniform float boreal_forest_t_max = 0.4;
+uniform float boreal_forest_t_max = 0.45;
 uniform float boreal_forest_p_min = 0.4;
-uniform float boreal_forest_p_max = 0.7;
+uniform float boreal_forest_p_max = 0.75;
 uniform float boreal_forest_h_min = 0.4;
-uniform float boreal_forest_h_max = 0.7;
+uniform float boreal_forest_h_max = 0.75;
 
-// TEMPERATE FOREST THRESHOLDS
+// GRASSLAND: Temperate and Mid-Moisture
+uniform float grassland_e_min = 0.2;
+uniform float grassland_e_max = 0.75;
+uniform float grassland_t_min = 0.3;
+uniform float grassland_t_max = 0.65;
+uniform float grassland_p_min = 0.25;
+uniform float grassland_p_max = 0.65;
+uniform float grassland_h_min = 0.25;
+uniform float grassland_h_max = 0.65;
+
+// TEMPERATE FOREST: Temperate and Humid
 uniform float temperate_forest_e_min = 0.2;
-uniform float temperate_forest_e_max = 0.6;
+uniform float temperate_forest_e_max = 0.65;
 uniform float temperate_forest_t_min = 0.3;
-uniform float temperate_forest_t_max = 0.6;
-uniform float temperate_forest_p_min = 0.5;
-uniform float temperate_forest_p_max = 0.8;
-uniform float temperate_forest_h_min = 0.5;
-uniform float temperate_forest_h_max = 0.8;
+uniform float temperate_forest_t_max = 0.75;
+uniform float temperate_forest_p_min = 0.6;
+uniform float temperate_forest_p_max = 0.85;
+uniform float temperate_forest_h_min = 0.6;
+uniform float temperate_forest_h_max = 0.85;
 
-// RAINFOREST THRESHOLDS
+// DESERT: Hot and Dry
+uniform float desert_e_min = 0.2;
+uniform float desert_e_max = 0.85;
+uniform float desert_t_min = 0.6;
+uniform float desert_t_max = 1.1; // Extended to catch peaks
+uniform float desert_p_min = 0.0;
+uniform float desert_p_max = 0.35;
+uniform float desert_h_min = 0.0;
+uniform float desert_h_max = 0.35;
+
+// SAVANNA: Hot and Mid-Moisture
+uniform float savanna_e_min = 0.2;
+uniform float savanna_e_max = 0.6;
+uniform float savanna_t_min = 0.6;
+uniform float savanna_t_max = 1.1;
+uniform float savanna_p_min = 0.3;
+uniform float savanna_p_max = 0.7;
+uniform float savanna_h_min = 0.3;
+uniform float savanna_h_max = 0.7;
+
+// RAINFOREST: Hot and Very Wet
 uniform float rainforest_e_min = 0.2;
-uniform float rainforest_e_max = 0.5;
-uniform float rainforest_t_min = 0.7;
-uniform float rainforest_t_max = 1.0;
-uniform float rainforest_p_min = 0.8;
-uniform float rainforest_p_max = 1.0;
-uniform float rainforest_h_min = 0.8;
-uniform float rainforest_h_max = 1.0;
+uniform float rainforest_e_max = 0.55;
+uniform float rainforest_t_min = 0.65;
+uniform float rainforest_t_max = 1.1;
+uniform float rainforest_p_min = 0.65;
+uniform float rainforest_p_max = 1.1;
+uniform float rainforest_h_min = 0.65;
+uniform float rainforest_h_max = 1.1;
 
-// MOUNTAIN THRESHOLDS
+// MOUNTAIN: High Elevation (Catch-all for anything above 0.7)
 uniform float mountain_e_min = 0.7;
-uniform float mountain_e_max = 1.0;
+uniform float mountain_e_max = 1.2;
 uniform float mountain_t_min = 0.0;
-uniform float mountain_t_max = 0.4;
+uniform float mountain_t_max = 1.0;
 uniform float mountain_p_min = 0.0;
 uniform float mountain_p_max = 1.0;
 uniform float mountain_h_min = 0.0;
