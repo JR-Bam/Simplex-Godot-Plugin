@@ -22,7 +22,6 @@ var mesh: ArrayMesh
 		generate_terrain()
 
 @export var amplitude = 40
-@export var frequency = 5.0
 
 func _ready() -> void:
 	# Initialize Simplex here, not at parse time

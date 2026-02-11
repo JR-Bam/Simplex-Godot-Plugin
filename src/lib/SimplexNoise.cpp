@@ -114,21 +114,16 @@ static const float gradients1D[16] = {
 */
 
 static inline void grad_for_domain_warp(int seed, int hashval, float x, float y, float& wx, float& wy) {
-    float gx = hash(x, seed), gy = hash(y, seed);
+    // Get gradient vector from hash (like in the regular grad() function)
+    const int32_t h = hashval & 0x3F;
+    const float u = h < 4 ? x : y;
+    const float v = h < 4 ? y : x;
+    float gx = ((h & 1) ? -u : u);
+    float gy = ((h & 2) ? -2.0f * v : 2.0f * v);
     
-    // Dot product with distance vector
-    float dot = x * gx + y * gy;
-    
-    // Get random vector (different part of hash)
-    int randHash = (hashval >> 4) & 0xFFF;  // Use upper bits
-    float angle = (randHash & 0xFFF) * (6.28318530718f / 4096.0f);
-    
-    float rx = cosf(angle);
-    float ry = sinf(angle);
-    
-    // Combine: (gradient·distance) × random_vector
-    wx = dot * rx;
-    wy = dot * ry;
+    // The warp vector IS the gradient, not a random rotated version
+    wx = gx;
+    wy = gy;
 }
 
 /**
@@ -422,17 +417,17 @@ float SimplexNoise::noise(float x, float y, float z, int32_t seed) {
     return 32.0f*(n0 + n1 + n2 + n3);
 }
 
-void SimplexNoise::transform_domain_warp_coordinate(float &x, float &y)
-{
-    static const float F2 = 0.366025403f;  // F2 = (sqrt(3) - 1) / 2
-    float t = (x + y) * F2;
-    x += t;
-    y += t;
-}
+// void SimplexNoise::transform_domain_warp_coordinate(float &x, float &y)
+// {
+//     static const float F2 = 0.366025403f;  // F2 = (sqrt(3) - 1) / 2
+//     float t = (x + y) * F2;
+//     x += t;
+//     y += t;
+// }
 
-void SimplexNoise::transform_domain_warp_coordinate(float &x, float &y, float &z)
-{
-}
+// void SimplexNoise::transform_domain_warp_coordinate(float &x, float &y, float &z)
+// {
+// }
 
 /**
  * Fractal/Fractional Brownian Motion (fBm) summation of 1D Perlin Simplex noise
@@ -595,12 +590,15 @@ void SimplexNoise::single_domain_warp_gradient(float warpAmp, float x, float y, 
     x *= mDomainWarpFrequency;
     y *= mDomainWarpFrequency;
 
-    // Skew already done on transform_domain_warp function
+    static const float F2 = 0.366025403f;
+    float s = (x + y) * F2;
+    float xs = x + s;
+    float ys = y + s;
 
     static const float G2 = 0.211324865f;
 
-    const int32_t i = fastfloor(x);
-    const int32_t j = fastfloor(y);
+    const int32_t i = fastfloor(xs);
+    const int32_t j = fastfloor(ys);
 
     // Unskew the cell origin back to (x,y) space
     const float t = static_cast<float>(i + j) * G2;
@@ -684,46 +682,40 @@ void SimplexNoise::single_domain_warp_gradient(float warpAmp, float x, float y, 
 
 void SimplexNoise::progressive_domain_warp_fractal(float &x, float &y) const
 {
-    float seed = mSeed;
-    float warpAmp = mDomainWarpAmplitude;
-    float frequency = mDomainWarpFrequency;
-
-    for (size_t i = 0; i < mOctaves; i++)
-    {
-        float xs = x;
-        float ys = y;
-        transform_domain_warp_coordinate(xs, ys);
-
-        single_domain_warp_gradient(warpAmp, xs, ys, x, y);
-
-        seed++;
-
-        warpAmp *= mDomainWarpFractalGain;
-        frequency *= mDomainWarpFractalLacunarity;
-    }
+    float current_x = x;
+    float current_y = y;
+    float amp = mDomainWarpAmplitude;
+    float freq = mDomainWarpFrequency;
     
+    for (size_t i = 0; i < mDomainWarpFractalOctaves; i++) {
+        // Use the CURRENT position for warping (this is "progressive")
+        single_domain_warp_gradient(amp, current_x * freq, current_y * freq, x, y);
+        
+        // Update position for next octave using the warped coordinates
+        current_x = x;
+        current_y = y;
+        
+        amp *= mDomainWarpFractalGain;
+        freq *= mDomainWarpFractalLacunarity;
+    }
 }
 
 void SimplexNoise::independent_domain_warp_fractal(float &x, float &y) const
 {
-    float seed = mSeed;
-    float warpAmp = mDomainWarpAmplitude;
-    float frequency = mDomainWarpFrequency;
-
-    float xs = x;
-    float ys = y;
-    transform_domain_warp_coordinate(xs, ys);
-
-    for (size_t i = 0; i < mOctaves; i++)
-    {
-
-        single_domain_warp_gradient(warpAmp, xs, ys, x, y);
-
-        seed++;
-
-        warpAmp *= mDomainWarpFractalGain;
-        frequency *= mDomainWarpFractalLacunarity;
+    float amp = mDomainWarpAmplitude;
+    float freq = mDomainWarpFrequency;
+    float dx = 0, dy = 0;  // Accumulate warp independently
+    
+    for (size_t i = 0; i < mDomainWarpFractalOctaves; i++) {
+        // Each octave warps the ORIGINAL coordinates independently
+        single_domain_warp_gradient(amp, x * freq, y * freq, dx, dy);
+        
+        amp *= mDomainWarpFractalGain;
+        freq *= mDomainWarpFractalLacunarity;
     }
+    
+    x += dx;
+    y += dy;
 }
 
 float SimplexNoise::calcFractalBounding() const

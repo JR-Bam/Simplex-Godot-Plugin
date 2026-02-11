@@ -113,8 +113,9 @@ void Simplex::_apply_domain_warp_2d(float &x, float &y) const
     case DOMAIN_WARP_FRACTAL_PROGRESSIVE:
         this->noise->progressive_domain_warp_fractal(x, y);
         break;
-    default:
-        this->noise->single_domain_warp_gradient(this->noise->mDomainWarpAmplitude, x, y, x, y);
+    default: // DOMAIN_WARP_FRACTAL_NONE
+        this->noise->single_domain_warp_gradient(
+            this->noise->mDomainWarpAmplitude, x, y, x, y);
         break;
     }
 }

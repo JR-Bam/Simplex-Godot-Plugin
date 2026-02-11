@@ -32,9 +32,6 @@ public:
         return t < 1 ? t : 2 - t;
     }
 
-    static void transform_domain_warp_coordinate(float &x, float &y);
-    static void transform_domain_warp_coordinate(float &x, float &y, float &z);
-
     // Fractal/Fractional Brownian Motion (fBm) noise summation
     float fractal(float x) const;
     float fractal(float x, float y) const;
