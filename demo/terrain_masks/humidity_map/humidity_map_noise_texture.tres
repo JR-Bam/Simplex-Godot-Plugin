@@ -1,0 +1,6 @@
+[gd_resource type="NoiseTexture2D" load_steps=2 format=3 uid="uid://l8rwgdtdirfs"]
+
+[ext_resource type="FastNoiseLite" uid="uid://dlttgb10cyds4" path="res://terrain_masks/humidity_map/humidity_map_noise.tres" id="1_njfml"]
+
+[resource]
+noise = ExtResource("1_njfml")

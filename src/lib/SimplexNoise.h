@@ -53,7 +53,10 @@ public:
     void progressive_domain_warp_fractal(float &x, float &y, float &z) const;
     void independent_domain_warp_fractal(float &x, float &y, float &z) const;
 
-
+    // Domain Warp methods
+    void domainWarp2D(float& x, float& y, int32_t seed, size_t octaves) const;
+    void domainWarp3D(float& x, float& y, float& z, int32_t seed, size_t octaves) const;
+    
     /**
      * Constructor of to initialize a fractal noise summation
      *

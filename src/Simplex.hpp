@@ -96,7 +96,12 @@ namespace godot
         // Domain Warp properties
         bool domain_warp_enabled;
         DomainWarpType domain_warp_type;
+        float domain_warp_amplitude;
+        float domain_warp_frequency;
         DomainWarpFractalType domain_warp_fractal_type;
+        uint16_t domain_warp_octaves;
+        float domain_warp_lacunarity;
+        float domain_warp_gain;
 
         // Helper methods
         void _apply_domain_warp_2d(float& x, float& y) const;

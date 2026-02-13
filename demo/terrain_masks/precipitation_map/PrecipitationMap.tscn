@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3 uid="uid://caby72v8dg3vr"]
+
+[ext_resource type="Script" path="res://terrain_masks/precipitation_map/precipitation_map.gd" id="1_4csfc"]
+[ext_resource type="Shader" path="res://terrain_masks/precipitation_map/PrecipitationMap.gdshader" id="2_ogrlg"]
+[ext_resource type="Texture2D" uid="uid://6ctykdsjfvlc" path="res://terrain_masks/precipitation_map/precipitation_map_noise_texture.tres" id="3_x3es6"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_t5qca"]
+shader = ExtResource("2_ogrlg")
+shader_parameter/noise = ExtResource("3_x3es6")
+
+[node name="PrecipitationMap" type="Node2D"]
+script = ExtResource("1_4csfc")
+
+[node name="SubViewport" type="SubViewport" parent="."]
+size = Vector2i(500, 500)
+render_target_update_mode = 4
+
+[node name="ColorRect" type="ColorRect" parent="SubViewport"]
+material = SubResource("ShaderMaterial_t5qca")
+offset_right = 500.0
+offset_bottom = 500.0
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.2
+one_shot = true
