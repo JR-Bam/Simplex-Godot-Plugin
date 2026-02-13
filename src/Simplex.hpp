@@ -4,6 +4,10 @@
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/global_constants.hpp>
+#include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
+#include <type_traits>
+
 #include "lib/SimplexNoise.h"
 #include <memory>
 
@@ -43,8 +47,13 @@ namespace godot
         float get_noise_2dv(const Vector2 &p_v) const;
         float get_noise_3d(float p_x, float p_y, float p_z) const;
         float get_noise_3dv(const Vector3 &p_v) const;
-        Simplex() : seed{0}, octaves{5}, frequency{.5f}, lacunarity{2.f}, gain{.5f}, pingPongStrength{2.f},
-            type{FRACTAL_NONE}, noise{std::make_unique<SimplexNoise>()} {}
+        Ref<Image> get_image(int32_t p_width, int32_t p_height, bool p_invert = false, bool p_in_3d_space = false, bool p_normalize = true) const;
+        Ref<Image> get_seamless_image(int32_t p_width, int32_t p_height, bool p_invert = false, bool p_in_3d_space = false, float p_skirt = 0.1, bool p_normalize = true) const;
+        TypedArray<Image> get_image_3d(int32_t p_width, int32_t p_height, int32_t p_depth, bool p_invert = false, bool p_normalize = true) const;
+        TypedArray<Image> get_seamless_image_3d(int32_t p_width, int32_t p_height, int32_t p_depth, bool p_invert = false, float p_skirt = 0.1, bool p_normalize = true) const;
+        Simplex() : domain_warp_enabled(false), domain_warp_type(DOMAIN_WARP_SIMPLEX),
+            domain_warp_fractal_type(DOMAIN_WARP_FRACTAL_PROGRESSIVE),
+            type(FRACTAL_NONE), noise(std::make_unique<SimplexNoise>()) {}
         ~Simplex() {};
 
         // Property getters setters
@@ -80,15 +89,8 @@ namespace godot
         float get_domain_warp_lacunarity();
         void set_domain_warp_gain(float gain);
         float get_domain_warp_gain();
-
     private:
         std::unique_ptr<SimplexNoise> noise;
-        int32_t seed;
-        uint16_t octaves;
-        float frequency;
-        float lacunarity;
-        float gain;
-        float pingPongStrength;
         FractalType type;
 
         // Domain Warp properties
