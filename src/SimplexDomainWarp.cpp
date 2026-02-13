@@ -122,4 +122,17 @@ void Simplex::_apply_domain_warp_2d(float &x, float &y) const
 
 void Simplex::_apply_domain_warp_3d(float &x, float &y, float &z) const
 {
+    switch (domain_warp_fractal_type)
+    {
+    case DOMAIN_WARP_FRACTAL_INDEPENDENT:
+        this->noise->independent_domain_warp_fractal(x, y, z);
+        break;
+    case DOMAIN_WARP_FRACTAL_PROGRESSIVE:
+        this->noise->progressive_domain_warp_fractal(x, y, z);
+        break;
+    default: // DOMAIN_WARP_FRACTAL_NONE
+        this->noise->single_domain_warp_gradient(
+            this->noise->mDomainWarpAmplitude, x, y, z, x, y, z);
+        break;
+    }
 }

@@ -46,9 +46,12 @@ public:
     float pingpong(float x, float y, float z) const;
 
     // Domain Warp
-    void single_domain_warp_gradient(float warmAmp, float x, float y, float& xr, float& yr) const;
+    void single_domain_warp_gradient(float warpAmp, float x, float y, float& xr, float& yr) const;
+    void single_domain_warp_gradient(float warpAmp, float x, float y, float z, float& xr, float& yr, float& zr) const;
     void progressive_domain_warp_fractal(float &x, float &y) const;
     void independent_domain_warp_fractal(float &x, float &y) const;
+    void progressive_domain_warp_fractal(float &x, float &y, float &z) const;
+    void independent_domain_warp_fractal(float &x, float &y, float &z) const;
 
 
     /**
