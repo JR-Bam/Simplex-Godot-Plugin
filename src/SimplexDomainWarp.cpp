@@ -8,6 +8,7 @@ void Simplex::set_domain_warp_enabled(bool enabled)
         this->domain_warp_enabled = enabled;
         _update_preview();
         notify_property_list_changed();
+        emit_changed();
     }
 }
 
@@ -59,6 +60,7 @@ void Simplex::set_domain_warp_fractal_type(DomainWarpFractalType fractal_type)
         this->domain_warp_fractal_type = fractal_type;
         _update_preview();
         notify_property_list_changed();
+        emit_changed();
     }
 }
 

@@ -147,7 +147,7 @@ bool Simplex::_property_get_revert(const StringName &p_property, Variant &r_ret)
         return true;
     }
     if (p_property == StringName("frequency")) {
-        r_ret = 0.5f;
+        r_ret = 0.01f;
         return true;
     }
     if (p_property == StringName("seed")) {
@@ -288,7 +288,7 @@ bool Simplex::_get(const StringName &p_name, Variant &r_ret) const {
 
 float Simplex::get_noise_1d(float p_x) const
 {
-    return this->noise->fractal(p_x);
+    return this->noise->fractal(p_x, this->type == FRACTAL_NONE);
 }
 
 float Simplex::get_noise_2d(float p_x, float p_y) const
@@ -302,7 +302,7 @@ float Simplex::get_noise_2d(float p_x, float p_y) const
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(p_x, p_y);
     default:
-        return this->noise->fractal(p_x, p_y);
+        return this->noise->fractal(p_x, p_y, this->type == FRACTAL_NONE);
     }
 }
 
@@ -319,7 +319,7 @@ float Simplex::get_noise_2dv(const Vector2 &p_v) const
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(x, y);
     default:
-        return this->noise->fractal(x, y);
+        return this->noise->fractal(x, y, this->type == FRACTAL_NONE);
     }
     
 }
@@ -332,7 +332,7 @@ float Simplex::get_noise_3d(float p_x, float p_y, float p_z) const
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(p_x, p_y, p_z);
     default:
-        return this->noise->fractal(p_x, p_y, p_z);
+        return this->noise->fractal(p_x, p_y, p_z), this->type == FRACTAL_NONE;
     }
 }
 
@@ -385,21 +385,39 @@ Ref<Image> Simplex::get_seamless_image(int32_t p_width, int32_t p_height, bool p
 {
     Ref<Image> image = Image::create(p_width, p_height, false, Image::FORMAT_L8);
     
-    // Calculate seamless coordinates using skirt to create blending region
-    float scale_x = 1.0f / (p_width - 1);
-    float scale_y = 1.0f / (p_height - 1);
-    float blend_start = p_skirt;
-    float blend_end = 1.0f - p_skirt;
+    float inv_width = 1.0f / (p_width - 1);
+    float inv_height = 1.0f / (p_height - 1);
+    float skirt = CLAMP(p_skirt, 0.0f, 0.5f);
     
     for (int y = 0; y < p_height; y++) {
-        float ny = y * scale_y;
+        float ny = y * inv_height;
+        
+        // Calculate vertical blend factor
+        float vy = 1.0f;
+        if (ny < skirt) {
+            // Top edge: blend with bottom
+            vy = ny / skirt;
+        } else if (ny > 1.0f - skirt) {
+            // Bottom edge: blend with top
+            vy = (1.0f - ny) / skirt;
+        }
         
         for (int x = 0; x < p_width; x++) {
-            float nx = x * scale_x;
+            float nx = x * inv_width;
+            
+            // Calculate horizontal blend factor
+            float vx = 1.0f;
+            if (nx < skirt) {
+                // Left edge: blend with right
+                vx = nx / skirt;
+            } else if (nx > 1.0f - skirt) {
+                // Right edge: blend with left
+                vx = (1.0f - nx) / skirt;
+            }
             
             float n;
             if (p_in_3d_space) {
-                // Map 2D coordinates onto a torus in 3D space for perfect seamless tiling
+                // 3D seamless using torus
                 float angle_x = nx * Math_TAU;
                 float angle_y = ny * Math_TAU;
                 float px = Math::cos(angle_x);
@@ -407,34 +425,32 @@ Ref<Image> Simplex::get_seamless_image(int32_t p_width, int32_t p_height, bool p
                 float py = Math::cos(angle_y);
                 float pw = Math::sin(angle_y);
                 
-                // Use 3D+1 noise by combining coordinates
-                n = get_noise_3d(px * 100.0f, py * 100.0f, pz * 100.0f) * 0.5f +
-                    get_noise_3d(py * 100.0f, pz * 100.0f, pw * 100.0f) * 0.5f;
+                float scale = 10.0f;
+                n = get_noise_3d(px * scale, py * scale, pz * scale) * 0.5f +
+                    get_noise_3d(py * scale, pz * scale, pw * scale) * 0.5f;
             } else {
-                // Blend between four corner samples for seamless 2D
-                float n00 = get_noise_2d(nx, ny);
-                float n10 = get_noise_2d(nx - 1.0f, ny);
-                float n01 = get_noise_2d(nx, ny - 1.0f);
-                float n11 = get_noise_2d(nx - 1.0f, ny - 1.0f);
+                // Sample the four corners
+                float n_center = get_noise_2d(nx, ny);
+                float n_right = get_noise_2d(nx - 1.0f, ny);
+                float n_bottom = get_noise_2d(nx, ny - 1.0f);
+                float n_bottom_right = get_noise_2d(nx - 1.0f, ny - 1.0f);
                 
-                // Blend weights with smoothstep in the skirt region
-                float wx = 1.0f;
-                float wy = 1.0f;
-                
-                if (nx < blend_start) {
-                    wx = Math::smoothstep(0.0f, blend_start, nx);
-                } else if (nx > blend_end) {
-                    wx = 1.0f - Math::smoothstep(blend_end, 1.0f, nx);
+                // Blend based on distance from edges
+                if (vx < 1.0f && vy < 1.0f) {
+                    // Corner: blend all four
+                    float n_horiz1 = Math::lerp(n_right, n_center, vx);
+                    float n_horiz2 = Math::lerp(n_bottom_right, n_bottom, vx);
+                    n = Math::lerp(n_horiz2, n_horiz1, vy);
+                } else if (vx < 1.0f) {
+                    // Horizontal blend only
+                    n = Math::lerp(n_right, n_center, vx);
+                } else if (vy < 1.0f) {
+                    // Vertical blend only
+                    n = Math::lerp(n_bottom, n_center, vy);
+                } else {
+                    // No blending
+                    n = n_center;
                 }
-                
-                if (ny < blend_start) {
-                    wy = Math::smoothstep(0.0f, blend_start, ny);
-                } else if (ny > blend_end) {
-                    wy = 1.0f - Math::smoothstep(blend_end, 1.0f, ny);
-                }
-                
-                // Bilinear interpolation with seamless blending
-                n = Math::lerp(Math::lerp(n00, n10, wx), Math::lerp(n01, n11, wx), wy);
             }
             
             if (p_normalize) {

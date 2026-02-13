@@ -56,6 +56,7 @@ void Simplex::set_fractal_type(FractalType fractal_type)
         this->type = fractal_type;
         _update_preview();
         notify_property_list_changed();
+        emit_changed();
     }
     
 }

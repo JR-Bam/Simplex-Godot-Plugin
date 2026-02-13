@@ -33,9 +33,9 @@ public:
     }
 
     // Fractal/Fractional Brownian Motion (fBm) noise summation
-    float fractal(float x) const;
-    float fractal(float x, float y) const;
-    float fractal(float x, float y, float z) const;
+    float fractal(float x, bool single = false) const;
+    float fractal(float x, float y, bool single = false) const;
+    float fractal(float x, float y, float z, bool single = false) const;
 
     // Ridged Noise
     float ridged(float x, float y) const;
@@ -64,7 +64,7 @@ public:
      */
     explicit SimplexNoise(int seed = 0,
                           size_t octaves = 5,
-                          float frequency = 1.0f,
+                          float frequency = 0.01f,
                           float amplitude = 1.0f,
                           float lacunarity = 2.0f,
                           float persistence = 0.5f,
