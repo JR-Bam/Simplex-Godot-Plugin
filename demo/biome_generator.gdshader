@@ -45,7 +45,7 @@ uniform float tundra_e_max = 0.75;
 uniform float tundra_t_min = 0.0;
 uniform float tundra_t_max = 0.35; // Meets Grassland/Boreal
 uniform float tundra_p_min = 0.0;
-uniform float tundra_p_max = 0.45;
+uniform float tundra_p_max = 0.7;
 uniform float tundra_h_min = 0.0;
 uniform float tundra_h_max = 0.45;
 
@@ -53,7 +53,7 @@ uniform float tundra_h_max = 0.45;
 uniform float boreal_forest_e_min = 0.2;
 uniform float boreal_forest_e_max = 0.8;
 uniform float boreal_forest_t_min = 0.0;
-uniform float boreal_forest_t_max = 0.45;
+uniform float boreal_forest_t_max = 0.5;
 uniform float boreal_forest_p_min = 0.4;
 uniform float boreal_forest_p_max = 0.75;
 uniform float boreal_forest_h_min = 0.4;
@@ -62,7 +62,7 @@ uniform float boreal_forest_h_max = 0.75;
 // GRASSLAND: Temperate and Mid-Moisture
 uniform float grassland_e_min = 0.2;
 uniform float grassland_e_max = 0.75;
-uniform float grassland_t_min = 0.3;
+uniform float grassland_t_min = 0.25;
 uniform float grassland_t_max = 0.65;
 uniform float grassland_p_min = 0.25;
 uniform float grassland_p_max = 0.65;
@@ -71,7 +71,7 @@ uniform float grassland_h_max = 0.65;
 
 // TEMPERATE FOREST: Temperate and Humid
 uniform float temperate_forest_e_min = 0.2;
-uniform float temperate_forest_e_max = 0.65;
+uniform float temperate_forest_e_max = 0.7;
 uniform float temperate_forest_t_min = 0.3;
 uniform float temperate_forest_t_max = 0.75;
 uniform float temperate_forest_p_min = 0.6;
@@ -85,13 +85,13 @@ uniform float desert_e_max = 0.85;
 uniform float desert_t_min = 0.6;
 uniform float desert_t_max = 1.1; // Extended to catch peaks
 uniform float desert_p_min = 0.0;
-uniform float desert_p_max = 0.35;
+uniform float desert_p_max = 0.4;
 uniform float desert_h_min = 0.0;
 uniform float desert_h_max = 0.35;
 
 // SAVANNA: Hot and Mid-Moisture
 uniform float savanna_e_min = 0.2;
-uniform float savanna_e_max = 0.6;
+uniform float savanna_e_max = 0.7;
 uniform float savanna_t_min = 0.6;
 uniform float savanna_t_max = 1.1;
 uniform float savanna_p_min = 0.3;
@@ -113,7 +113,7 @@ uniform float rainforest_h_max = 1.1;
 uniform float mountain_e_min = 0.7;
 uniform float mountain_e_max = 1.2;
 uniform float mountain_t_min = 0.0;
-uniform float mountain_t_max = 1.0;
+uniform float mountain_t_max = 1.0; 
 uniform float mountain_p_min = 0.0;
 uniform float mountain_p_max = 1.0;
 uniform float mountain_h_min = 0.0;
@@ -194,7 +194,7 @@ void fragment(){
 		// If all four conditions are active, the biome shader map can have black patches due to NO biome-types falling within those thresholds
 		// This is the most conditions we can fit without patching
 		if (
-			// elevation < min_e[i] - blend_radius || elevation > max_e[i] + blend_radius ||        
+			elevation < min_e[i] - blend_radius || elevation > max_e[i] + blend_radius ||        
 			temperature < min_t[i] - blend_radius || temperature > max_t[i] + blend_radius ||
 			precipitation < min_p[i] - blend_radius || precipitation > max_p[i] + blend_radius ||
 			humidity < min_h[i] - blend_radius || humidity > max_h[i] + blend_radius

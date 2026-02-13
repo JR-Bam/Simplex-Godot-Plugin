@@ -1,19 +1,19 @@
 @tool
 extends Node
 
-class_name WorlConfiguration
+class_name WorldConfiguration
 
 var terrain: MeshInstance3D
 var mesh: ArrayMesh
 @export var noise: Simplex
 @export var fnoise: FastNoiseLite
 
-@export var toggle: bool = true:
-	set(_toggle):
-		toggle = _toggle
+@export_enum("Simplex", "FastNoiseLite") var noise_type: int = 0:
+	set(_type):
+		noise_type = _type
 		generate_terrain()
 
-@export_range(1, 100, 1) var subdivisions: int = 10:
+@export_range(1, 100, 1) var subdivisions: int = 50:
 	set(subdiv):
 		subdivisions = subdiv
 		generate_terrain()
@@ -23,11 +23,13 @@ var mesh: ArrayMesh
 		size = _size
 		generate_terrain()
 
-@export var amplitude = 40
+@export var amplitude = 100
 @export var frequency = 5.0
 
-
-
+# STEP 1: Base Terrain Generation
+@export var elevation_map: Texture2D
+@export var erosion_map: Texture2D
+@export var erosion_strength: float = 0.5
 
 func _ready() -> void:
 	# Initialize Simplex here, not at parse time
@@ -76,10 +78,37 @@ func generate_terrain():
 		var z = vertex.z
 		
 		var base_height: float
-		if toggle:
-			base_height = fnoise.get_noise_2d(x, z) * amplitude
+		if elevation_map != null:
+			var uv = Vector2(
+				(x + size / 2.0) / size,
+				(z + size / 2.0) / size
+			)
+			uv = uv.clamp(Vector2.ZERO, Vector2.ONE)
+			
+			# Get the image from the texture and sample it to form ELEVATION
+			var image = elevation_map.get_image()
+			var pixel_x = int(uv.x * (image.get_width() - 1))
+			var pixel_y = int(uv.y * (image.get_height() - 1))
+			var color = image.get_pixel(pixel_x, pixel_y)
+			base_height = color.r * amplitude
+			
+			# Apply EROSION if erosion map exists
+			if erosion_map != null:
+				var erosion_image = erosion_map.get_image()
+				var erosion_color = erosion_image.get_pixel(pixel_x, pixel_y)
+				var erosion_value = erosion_color.r
+				
+				# Blend elevation with erosion (erosion flattens the terrain)
+				base_height = lerp(base_height, base_height * erosion_value, erosion_strength)
 		else:
-			base_height = noise.get_noise_2d(x, z) * amplitude
+			# Fallback to noise if no elevation map
+			if noise_type == 1:  # FastNoiseLite
+				base_height = fnoise.get_noise_2d(x, z) * amplitude
+			else:  # Simplex
+				base_height = noise.get_noise_2d(x, z) * amplitude
+		
+		vertex.y = base_height
+		data_tool.set_vertex(i, vertex)
 		
 		vertex.y = base_height
 		data_tool.set_vertex(i, vertex)
