@@ -4,8 +4,6 @@ extends Node
 class_name WorldConfiguration
 
 var terrain: MeshInstance3D
-@export var noise := Simplex.new()
-@export var fnoise := FastNoiseLite.new()
 var mesh: ArrayMesh
 @export var noise: Simplex
 @export var fnoise: FastNoiseLite
@@ -25,8 +23,13 @@ var mesh: ArrayMesh
 		size = _size
 		generate_terrain()
 
-@export var amplitude = 40
+@export var amplitude = 100
 @export var frequency = 5.0
+
+# STEP 1: Base Terrain Generation
+@export var elevation_map: Texture2D
+@export var erosion_map: Texture2D
+@export var erosion_strength: float = 0.5
 
 func _ready() -> void:
 	# Initialize Simplex here, not at parse time
@@ -45,6 +48,19 @@ func _ready() -> void:
 # ==============================================================
 
 func generate_terrain():
+	# Ensure the node exists before assigning to it
+	if not is_inside_tree() or terrain == null:
+		terrain = get_node_or_null("Main") 
+		if terrain == null: return
+	
+	# Make sure noise is initialized
+	print("Terrain node check: Passed")
+	if noise == null:
+		noise = Simplex.new()
+	if fnoise == null:
+		fnoise = FastNoiseLite.new()
+		fnoise.frequency_scale = frequency
+	
 	# Update mesh properties
 	var plane = PlaneMesh.new()
 	plane.size = Vector2(size, size)
