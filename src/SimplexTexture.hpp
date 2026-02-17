@@ -1,6 +1,5 @@
 #pragma once
 
-#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/gradient.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -8,8 +7,8 @@
 
 namespace godot {
 
-class SimplexTexture : public Texture2D {
-    GDCLASS(SimplexTexture, Texture2D)
+class SimplexTexture : public ImageTexture {
+    GDCLASS(SimplexTexture, ImageTexture)
 
 private:
     // Core noise
@@ -28,11 +27,10 @@ private:
     float bump_strength;
     bool generate_mipmaps;
     
-    // Cached data
-    Ref<ImageTexture> cached_texture;
     bool dirty;
+    Vector2i current_image_size;
+    Image::Format current_image_format;
     
-    void _update_texture();
     void _on_noise_changed();
     void _on_color_ramp_changed();
 
@@ -45,15 +43,6 @@ protected:
 public:
     SimplexTexture();
     ~SimplexTexture();
-
-    // Texture2D virtual overrides
-    virtual int32_t _get_width() const override;
-    virtual int32_t _get_height() const override;
-    virtual bool _is_pixel_opaque(int32_t p_x, int32_t p_y) const override;
-    virtual bool _has_alpha() const override;
-    virtual void _draw(const RID &p_to_canvas_item, const Vector2 &p_pos, const Color &p_modulate, bool p_transpose) const override;
-    virtual void _draw_rect(const RID &p_to_canvas_item, const Rect2 &p_rect, bool p_tile, const Color &p_modulate, bool p_transpose) const override;
-    virtual void _draw_rect_region(const RID &p_to_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate, bool p_transpose, bool p_clip_uv) const override;
 
     // Property accessors
     void set_noise(const Ref<Simplex> &p_noise);
@@ -96,8 +85,10 @@ public:
     void regenerate();
     void mark_dirty();
     
-    // Regular method (not virtual override)
+    // Ensure up‑to‑date image before returning
     Ref<Image> get_image() const;
+
+    void _update_texture();
 };
 
 } // namespace godot

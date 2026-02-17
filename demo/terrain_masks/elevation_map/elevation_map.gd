@@ -3,6 +3,7 @@ extends Node2D
 @onready var viewport = get_node('SubViewport')
 @onready var timer = get_node('Timer')
 
+
 var wc = WorldConfiguration.new()
 var texture
 
