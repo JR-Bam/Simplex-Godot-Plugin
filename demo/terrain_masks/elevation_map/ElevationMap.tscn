@@ -2,11 +2,11 @@
 
 [ext_resource type="Script" path="res://terrain_masks/elevation_map/elevation_map.gd" id="1_c3bcg"]
 [ext_resource type="Shader" path="res://terrain_masks/elevation_map/ElevationMap.gdshader" id="2_qlxpj"]
-[ext_resource type="Texture2D" uid="uid://c0dva4ipbhjdh" path="res://terrain_masks/elevation_map/elevation_map_noise_texture.tres" id="3_uvx1v"]
+[ext_resource type="Texture2D" uid="uid://cgdd0fdp4oyen" path="res://terrain_masks/elevation_map/elevation_map_simplex_noise_texture.tres" id="3_b0e2q"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ai3cc"]
 shader = ExtResource("2_qlxpj")
-shader_parameter/noise = ExtResource("3_uvx1v")
+shader_parameter/noise = ExtResource("3_b0e2q")
 
 [node name="ElevationMap" type="Node2D"]
 script = ExtResource("1_c3bcg")

@@ -1,10 +1,6 @@
 #include "SimplexTexture.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/image.hpp>
-#include <godot_cpp/classes/rendering_server.hpp>
-#include <godot_cpp/classes/rendering_device.hpp>
-#include <godot_cpp/variant/rect2.hpp>
-#include <godot_cpp/classes/canvas_item.hpp>
 
 namespace godot {
 
@@ -19,10 +15,21 @@ SimplexTexture::SimplexTexture() :
     as_normal_map(false),
     bump_strength(8.0f),
     generate_mipmaps(true),
-    dirty(true) {}
+    current_image_size(0, 0),
+    current_image_format(Image::FORMAT_MAX),
+    dirty(true) {
+        UtilityFunctions::print("[SimplexTexture] Constructor");
+
+        if (noise.is_valid()) {
+            noise->connect("changed", Callable(this, "_on_noise_changed"));
+            UtilityFunctions::print("[SimplexTexture] Noise instantiated and connected");
+        }
+
+        // Generate initial texture
+        _update_texture();
+    }
 
 SimplexTexture::~SimplexTexture() {
-    // Disconnect signals
     if (noise.is_valid()) {
         noise->disconnect("changed", Callable(this, "_on_noise_changed"));
     }
@@ -32,7 +39,6 @@ SimplexTexture::~SimplexTexture() {
 }
 
 void SimplexTexture::_bind_methods() {
-    // Property bindings
     ClassDB::bind_method(D_METHOD("set_noise", "noise"), &SimplexTexture::set_noise);
     ClassDB::bind_method(D_METHOD("get_noise"), &SimplexTexture::get_noise);
     
@@ -74,9 +80,9 @@ void SimplexTexture::_bind_methods() {
     
     ClassDB::bind_method(D_METHOD("get_image"), &SimplexTexture::get_image);
     
-    // Signal handlers
     ClassDB::bind_method(D_METHOD("_on_noise_changed"), &SimplexTexture::_on_noise_changed);
     ClassDB::bind_method(D_METHOD("_on_color_ramp_changed"), &SimplexTexture::_on_color_ramp_changed);
+    ClassDB::bind_method(D_METHOD("_update_texture"), &SimplexTexture::_update_texture);
 }
 
 bool SimplexTexture::_set(const StringName &p_name, const Variant &p_value) {
@@ -162,79 +168,58 @@ bool SimplexTexture::_get(const StringName &p_name, Variant &r_ret) const {
 }
 
 void SimplexTexture::_get_property_list(List<PropertyInfo> *p_list) const {
-    // Core noise property
-    p_list->push_back(PropertyInfo(Variant::OBJECT, "noise", 
-        PROPERTY_HINT_RESOURCE_TYPE, "Simplex"));
+    p_list->push_back(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "Simplex"));
     
-    // Size group
     p_list->push_back(PropertyInfo(Variant::NIL, "Size", PROPERTY_HINT_NONE, "size_", PROPERTY_USAGE_GROUP));
-    p_list->push_back(PropertyInfo(Variant::INT, "width", 
-        PROPERTY_HINT_RANGE, "1,4096,1,or_greater"));
-    p_list->push_back(PropertyInfo(Variant::INT, "height", 
-        PROPERTY_HINT_RANGE, "1,4096,1,or_greater"));
+    p_list->push_back(PropertyInfo(Variant::INT, "width", PROPERTY_HINT_RANGE, "1,4096,1,or_greater"));
+    p_list->push_back(PropertyInfo(Variant::INT, "height", PROPERTY_HINT_RANGE, "1,4096,1,or_greater"));
     
-    // Generation group
     p_list->push_back(PropertyInfo(Variant::NIL, "Generation", PROPERTY_HINT_NONE, "generation_", PROPERTY_USAGE_GROUP));
     p_list->push_back(PropertyInfo(Variant::BOOL, "invert"));
     p_list->push_back(PropertyInfo(Variant::BOOL, "in_3d_space"));
     p_list->push_back(PropertyInfo(Variant::BOOL, "normalize"));
     p_list->push_back(PropertyInfo(Variant::BOOL, "generate_mipmaps"));
     
-    // Seamless group
     p_list->push_back(PropertyInfo(Variant::NIL, "Seamless", PROPERTY_HINT_NONE, "seamless_", PROPERTY_USAGE_GROUP));
     p_list->push_back(PropertyInfo(Variant::BOOL, "seamless"));
-    p_list->push_back(PropertyInfo(Variant::FLOAT, "seamless_blend_skirt", 
-        PROPERTY_HINT_RANGE, "0.0,0.5,0.01"));
+    p_list->push_back(PropertyInfo(Variant::FLOAT, "seamless_blend_skirt", PROPERTY_HINT_RANGE, "0.0,0.5,0.01"));
     
-    // Color processing group
     p_list->push_back(PropertyInfo(Variant::NIL, "Color", PROPERTY_HINT_NONE, "color_", PROPERTY_USAGE_GROUP));
-    p_list->push_back(PropertyInfo(Variant::OBJECT, "color_ramp", 
-        PROPERTY_HINT_RESOURCE_TYPE, "Gradient"));
+    p_list->push_back(PropertyInfo(Variant::OBJECT, "color_ramp", PROPERTY_HINT_RESOURCE_TYPE, "Gradient"));
     
-    // Normal map group
     p_list->push_back(PropertyInfo(Variant::NIL, "Normal Map", PROPERTY_HINT_NONE, "normal_map_", PROPERTY_USAGE_GROUP));
     p_list->push_back(PropertyInfo(Variant::BOOL, "as_normal_map"));
-    p_list->push_back(PropertyInfo(Variant::FLOAT, "bump_strength", 
-        PROPERTY_HINT_RANGE, "0.1,32.0,0.1"));
+    p_list->push_back(PropertyInfo(Variant::FLOAT, "bump_strength", PROPERTY_HINT_RANGE, "0.1,32.0,0.1"));
 }
 
 void SimplexTexture::_update_texture() {
-    if (!dirty && cached_texture.is_valid()) {
+    UtilityFunctions::print("[SimplexTexture] _update_texture() called, dirty=", dirty);
+    if (!dirty) {
         return;
     }
-    
+
     if (noise.is_null()) {
-        UtilityFunctions::print("Noise is null in SimplexTexture");
+        UtilityFunctions::print("[SimplexTexture] _update_texture: noise is NULL!");
         return;
     }
     
     Ref<Image> image;
     
-    // Generate base image
     if (seamless) {
-        image = noise->get_seamless_image(
-            width, 
-            height, 
-            invert, 
-            in_3d_space, 
-            seamless_blend_skirt, 
-            normalize
-        );
+        image = noise->get_seamless_image(width, height, invert, in_3d_space, seamless_blend_skirt, normalize);
     } else {
-        image = noise->get_image(
-            width, 
-            height, 
-            invert, 
-            in_3d_space, 
-            normalize
-        );
+        image = noise->get_image(width, height, invert, in_3d_space, normalize);
     }
+
+    if (image.is_null()) {
+        UtilityFunctions::print("[SimplexTexture] _update_texture: image is NULL!");
+        return;
+    }
+    UtilityFunctions::print("[SimplexTexture] _update_texture: image obtained, format=", image->get_format());
     
     // Apply color ramp if provided
     if (color_ramp.is_valid() && color_ramp->get_point_count() > 0) {
-        // Convert grayscale to RGB first
         image->convert(Image::FORMAT_RGBA8);
-        
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 Color pixel = image->get_pixel(x, y);
@@ -246,39 +231,28 @@ void SimplexTexture::_update_texture() {
         }
     }
     
-
     // Convert to normal map if requested
     if (as_normal_map) {
         Ref<Image> normal_map = Image::create(width, height, false, Image::FORMAT_RGBA8);
-        
-        // First, ensure we have a height map to work with
-        // If color ramp was applied, we need to convert back to grayscale or use the red channel
         Ref<Image> height_map = image;
         
         for (int y = 1; y < height - 1; y++) {
             for (int x = 1; x < width - 1; x++) {
-                // Get height samples (use red channel since it's grayscale)
                 float h_center = height_map->get_pixel(x, y).r;
                 float h_right = height_map->get_pixel(x + 1, y).r;
                 float h_left = height_map->get_pixel(x - 1, y).r;
                 float h_down = height_map->get_pixel(x, y + 1).r;
                 float h_up = height_map->get_pixel(x, y - 1).r;
                 
-                // Calculate gradients (in texture space)
                 float dx = (h_right - h_left) * bump_strength;
                 float dy = (h_down - h_up) * bump_strength;
                 
-                // Construct normal (the Z component points up)
-                // For a height map, the normal is (-dx, -dy, 1) normalized
                 Vector3 normal = Vector3(-dx, -dy, 1.0f);
-                
-                // Normalize to get a unit vector
                 float length = normal.length();
                 if (length > 0.0f) {
                     normal /= length;
                 }
                 
-                // Convert from [-1,1] to [0,1] range for RGB storage
                 Color normal_color(
                     (normal.x * 0.5f) + 0.5f,
                     (normal.y * 0.5f) + 0.5f,
@@ -290,7 +264,7 @@ void SimplexTexture::_update_texture() {
             }
         }
         
-        // Handle edges (simple copy from neighbors)
+        // Handle edges
         for (int x = 0; x < width; x++) {
             if (x > 0 && x < width - 1) {
                 normal_map->set_pixel(x, 0, normal_map->get_pixel(x, 1));
@@ -304,7 +278,6 @@ void SimplexTexture::_update_texture() {
             }
         }
         
-        // Fill corners
         if (width > 1 && height > 1) {
             normal_map->set_pixel(0, 0, normal_map->get_pixel(1, 1));
             normal_map->set_pixel(width - 1, 0, normal_map->get_pixel(width - 2, 1));
@@ -315,25 +288,34 @@ void SimplexTexture::_update_texture() {
         image = normal_map;
     }
 
-    if (image.is_valid()) {
-        // Generate mipmaps if requested
-        if (generate_mipmaps) {
-            image->generate_mipmaps();
-        }
-        
-        // ALWAYS recreate the texture when as_normal_map, width, or height changes
-        // because the format or size might be different
-        cached_texture = ImageTexture::create_from_image(image);
-        
-        dirty = false;
-        emit_changed();
+    if (generate_mipmaps) {
+        image->generate_mipmaps();
     }
+    
+
+    Vector2i new_size = image->get_size();
+    Image::Format new_format = image->get_format();
+
+    if (new_size == current_image_size && new_format == current_image_format) {
+        // Compatible → use update()
+        printf("Updated\n");
+        update(image);
+    } else {
+        printf("Initialized\n");
+        // Size or format changed → must use set_image()
+        set_image(image);
+        // Update stored properties
+        current_image_size = new_size;
+        current_image_format = new_format;
+    }
+    
+    dirty = false;
+    emit_changed();
 }
 
-// Signal handlers
 void SimplexTexture::_on_noise_changed() {
     dirty = true;
-    emit_changed(); // This will trigger a redraw
+    emit_changed();
 }
 
 void SimplexTexture::_on_color_ramp_changed() {
@@ -341,69 +323,24 @@ void SimplexTexture::_on_color_ramp_changed() {
     emit_changed();
 }
 
-// Texture2D virtual overrides
-int32_t SimplexTexture::_get_width() const {
-    return width;
-}
-
-int32_t SimplexTexture::_get_height() const {
-    return height;
-}
-
-bool SimplexTexture::_is_pixel_opaque(int32_t p_x, int32_t p_y) const {
-    return true;
-}
-
-bool SimplexTexture::_has_alpha() const {
-    return false;
-}
-
-void SimplexTexture::_draw(const RID &p_to_canvas_item, const Vector2 &p_pos, const Color &p_modulate, bool p_transpose) const {
-    const_cast<SimplexTexture*>(this)->_update_texture();
-    if (cached_texture.is_valid()) {
-        cached_texture->draw(p_to_canvas_item, p_pos, p_modulate, p_transpose);
-    }
-}
-
-void SimplexTexture::_draw_rect(const RID &p_to_canvas_item, const Rect2 &p_rect, bool p_tile, const Color &p_modulate, bool p_transpose) const {
-    const_cast<SimplexTexture*>(this)->_update_texture();
-    if (cached_texture.is_valid()) {
-        cached_texture->draw_rect(p_to_canvas_item, p_rect, p_tile, p_modulate, p_transpose);
-    }
-}
-
-void SimplexTexture::_draw_rect_region(const RID &p_to_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate, bool p_transpose, bool p_clip_uv) const {
-    const_cast<SimplexTexture*>(this)->_update_texture();
-    if (cached_texture.is_valid()) {
-        cached_texture->draw_rect_region(p_to_canvas_item, p_rect, p_src_rect, p_modulate, p_transpose, p_clip_uv);
-    }
-}
-
 Ref<Image> SimplexTexture::get_image() const {
     const_cast<SimplexTexture*>(this)->_update_texture();
-    if (cached_texture.is_valid()) {
-        return cached_texture->get_image();
-    }
-    return Ref<Image>();
+    return ImageTexture::get_image();
 }
 
-// Property accessors
+// Property accessors (unchanged)
 void SimplexTexture::set_noise(const Ref<Simplex> &p_noise) {
     if (noise != p_noise) {
-        // Disconnect old signal
         if (noise.is_valid()) {
             noise->disconnect("changed", Callable(this, "_on_noise_changed"));
         }
-        
         noise = p_noise;
-        
-        // Connect new signal
         if (noise.is_valid()) {
             noise->connect("changed", Callable(this, "_on_noise_changed"));
         }
-        
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -417,6 +354,7 @@ void SimplexTexture::set_width(int p_width) {
         width = p_width;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -430,6 +368,7 @@ void SimplexTexture::set_height(int p_height) {
         height = p_height;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -442,6 +381,7 @@ void SimplexTexture::set_invert(bool p_invert) {
         invert = p_invert;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -454,6 +394,7 @@ void SimplexTexture::set_in_3d_space(bool p_enabled) {
         in_3d_space = p_enabled;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -466,6 +407,7 @@ void SimplexTexture::set_normalize(bool p_normalize) {
         normalize = p_normalize;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -478,6 +420,7 @@ void SimplexTexture::set_seamless(bool p_seamless) {
         seamless = p_seamless;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -491,6 +434,7 @@ void SimplexTexture::set_seamless_blend_skirt(float p_skirt) {
         seamless_blend_skirt = p_skirt;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -500,20 +444,16 @@ float SimplexTexture::get_seamless_blend_skirt() const {
 
 void SimplexTexture::set_color_ramp(const Ref<Gradient> &p_ramp) {
     if (color_ramp != p_ramp) {
-        // Disconnect old signal
         if (color_ramp.is_valid()) {
             color_ramp->disconnect("changed", Callable(this, "_on_color_ramp_changed"));
         }
-        
         color_ramp = p_ramp;
-        
-        // Connect new signal
         if (color_ramp.is_valid()) {
             color_ramp->connect("changed", Callable(this, "_on_color_ramp_changed"));
         }
-        
         dirty = true;
         emit_changed();
+        call_deferred("_update_texture");
     }
 }
 
@@ -526,6 +466,7 @@ void SimplexTexture::set_as_normal_map(bool p_enabled) {
         as_normal_map = p_enabled;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -538,6 +479,7 @@ void SimplexTexture::set_bump_strength(float p_strength) {
         bump_strength = p_strength;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 
@@ -550,6 +492,7 @@ void SimplexTexture::set_generate_mipmaps(bool p_enabled) {
         generate_mipmaps = p_enabled;
         dirty = true;
         emit_changed();
+        _update_texture();
     }
 }
 

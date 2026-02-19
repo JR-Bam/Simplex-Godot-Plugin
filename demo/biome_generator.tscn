@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://b5rkv2e2kye5o"]
 
 [ext_resource type="Shader" path="res://biome_generator.gdshader" id="1_pjwtp"]
-[ext_resource type="Texture2D" uid="uid://8xopssarnuhe" path="res://Images/ElevationMap.tres" id="2_kun5i"]
+[ext_resource type="Texture2D" uid="uid://1ipdcvkqfj82" path="res://Images/ElevationMap.tres" id="2_kun5i"]
 [ext_resource type="Texture2D" uid="uid://ctgxhb5nre7ba" path="res://Images/HumidityMap.tres" id="3_c3x0d"]
 [ext_resource type="Texture2D" uid="uid://de0v7jg0vb42w" path="res://Images/PrecipitationMap.tres" id="4_xi0jx"]
 [ext_resource type="Texture2D" uid="uid://83xgfluxh1wf" path="res://Images/TemperatureMap.tres" id="5_1dm4g"]
