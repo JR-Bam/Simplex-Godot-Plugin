@@ -2,7 +2,7 @@
 
 [resource]
 noise_type = 3
-frequency = 0.0227
+frequency = 0.0077
 fractal_octaves = 3
 fractal_lacunarity = 2.7
 domain_warp_enabled = true

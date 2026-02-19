@@ -2,8 +2,8 @@
 
 [resource]
 noise_type = 3
-seed = 2
-frequency = 0.0227
+seed = 68
+frequency = 0.004
 fractal_octaves = 3
 fractal_lacunarity = 2.7
 domain_warp_enabled = true

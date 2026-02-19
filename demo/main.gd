@@ -24,7 +24,6 @@ var mesh: ArrayMesh
 		generate_terrain()
 
 @export var amplitude = 100
-@export var frequency = 5.0
 
 # STEP 1: Base Terrain Generation
 @export var elevation_map: Texture2D
@@ -59,7 +58,6 @@ func generate_terrain():
 		noise = Simplex.new()
 	if fnoise == null:
 		fnoise = FastNoiseLite.new()
-		fnoise.frequency_scale = frequency
 	
 	# Update mesh properties
 	var plane = PlaneMesh.new()
