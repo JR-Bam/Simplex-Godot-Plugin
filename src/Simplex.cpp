@@ -332,7 +332,7 @@ float Simplex::get_noise_3d(float p_x, float p_y, float p_z) const
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(p_x, p_y, p_z);
     default:
-        return this->noise->fractal(p_x, p_y, p_z), this->type == FRACTAL_NONE;
+        return this->noise->fractal(p_x, p_y, p_z, this->type == FRACTAL_NONE);
     }
 }
 
@@ -381,95 +381,83 @@ Ref<Image> Simplex::get_image(int32_t p_width, int32_t p_height, bool p_invert, 
     return image;
 }
 
-Ref<Image> Simplex::get_seamless_image(int32_t p_width, int32_t p_height, bool p_invert, bool p_in_3d_space, float p_skirt, bool p_normalize) const
-{
+Ref<Image> Simplex::get_seamless_image(int p_width, int p_height, bool p_invert, bool p_in_3d_space, float p_skirt, bool p_normalize) const {
     Ref<Image> image = Image::create(p_width, p_height, false, Image::FORMAT_L8);
     
-    float inv_width = 1.0f / (p_width - 1);
-    float inv_height = 1.0f / (p_height - 1);
-    float skirt = CLAMP(p_skirt, 0.0f, 0.5f);
-    
-    for (int y = 0; y < p_height; y++) {
-        float ny = y * inv_height;
-        
-        // Calculate vertical blend factor
-        float vy = 1.0f;
-        if (ny < skirt) {
-            // Top edge: blend with bottom
-            vy = ny / skirt;
-        } else if (ny > 1.0f - skirt) {
-            // Bottom edge: blend with top
-            vy = (1.0f - ny) / skirt;
-        }
-        
-        for (int x = 0; x < p_width; x++) {
-            float nx = x * inv_width;
-            
-            // Calculate horizontal blend factor
-            float vx = 1.0f;
-            if (nx < skirt) {
-                // Left edge: blend with right
-                vx = nx / skirt;
-            } else if (nx > 1.0f - skirt) {
-                // Right edge: blend with left
-                vx = (1.0f - nx) / skirt;
-            }
-            
-            float n;
-            if (p_in_3d_space) {
-                // 3D seamless using torus
+    if (p_in_3d_space) {
+        // Map 2D texture coordinates to two intersecting cylinders in 3D space.
+        // This emulates a 4D torus to avoid the "pinch" distortion of a 3D torus.
+        for (int y = 0; y < p_height; y++) {
+            for (int x = 0; x < p_width; x++) {
+                float nx = (float)x / p_width;
+                float ny = (float)y / p_height;
+                
                 float angle_x = nx * Math_TAU;
                 float angle_y = ny * Math_TAU;
-                float px = Math::cos(angle_x);
-                float pz = Math::sin(angle_x);
-                float py = Math::cos(angle_y);
-                float pw = Math::sin(angle_y);
                 
-                float scale = 10.0f;
-                n = get_noise_3d(px * scale, py * scale, pz * scale) * 0.5f +
-                    get_noise_3d(py * scale, pz * scale, pw * scale) * 0.5f;
-            } else {
-                // Sample the four corners
-                float n_center = get_noise_2d(nx, ny);
-                float n_right = get_noise_2d(nx - 1.0f, ny);
-                float n_bottom = get_noise_2d(nx, ny - 1.0f);
-                float n_bottom_right = get_noise_2d(nx - 1.0f, ny - 1.0f);
+                // Radii scaled so that the circumference matches pixel dimensions
+                float scale_x = p_width / Math_TAU;
+                float scale_y = p_height / Math_TAU;
                 
-                // Blend based on distance from edges
-                if (vx < 1.0f && vy < 1.0f) {
-                    // Corner: blend all four
-                    float n_horiz1 = Math::lerp(n_right, n_center, vx);
-                    float n_horiz2 = Math::lerp(n_bottom_right, n_bottom, vx);
-                    n = Math::lerp(n_horiz2, n_horiz1, vy);
-                } else if (vx < 1.0f) {
-                    // Horizontal blend only
-                    n = Math::lerp(n_right, n_center, vx);
-                } else if (vy < 1.0f) {
-                    // Vertical blend only
-                    n = Math::lerp(n_bottom, n_center, vy);
-                } else {
-                    // No blending
-                    n = n_center;
-                }
+                float px = Math::cos(angle_x) * scale_x;
+                float pz = Math::sin(angle_x) * scale_x;
+                float py = Math::cos(angle_y) * scale_y;
+                float pw = Math::sin(angle_y) * scale_y;
+                
+                // Average two 3D samples to simulate 4D seamlessness
+                float n = get_noise_3d(px, py, pz) * 0.5f +
+                          get_noise_3d(py, pz, pw) * 0.5f;
+
+                if (p_normalize) n = (n + 1.0f) * 0.5f;
+                if (p_invert) n = 1.0f - n;
+
+                n = CLAMP(n, 0.0f, 1.0f);
+                image->set_pixel(x, y, Color(n, n, n));
             }
-            
-            if (p_normalize) {
-                n = (n + 1.0f) * 0.5f;
+        }
+    } else {
+        float skirt_w = p_width * p_skirt;
+        float skirt_h = p_height * p_skirt;
+
+        for (int y = 0; y < p_height; y++) {
+            for (int x = 0; x < p_width; x++) {
+                // Use raw pixel coordinates to maintain noise scale
+                float n_center = get_noise_2d((float)x, (float)y);
+
+                // Determine offset direction based on which edge we are closer to
+                float off_x = (x < p_width / 2) ? (float)p_width : -(float)p_width;
+                float off_y = (y < p_height / 2) ? (float)p_height : -(float)p_height;
+
+                // Sample wrapped neighbors
+                float n_x = get_noise_2d(x + off_x, (float)y);
+                float n_y = get_noise_2d((float)x, y + off_y);
+                float n_xy = get_noise_2d(x + off_x, y + off_y);
+
+                // Calculate weights (0.0 at edge, 1.0 at center)
+                float weight_x = (x < skirt_w) ? (x / skirt_w) : ((p_width - 1 - x) < skirt_w ? (p_width - 1 - x) / skirt_w : 1.0f);
+                float weight_y = (y < skirt_h) ? (y / skirt_h) : ((p_height - 1 - y) < skirt_h ? (p_height - 1 - y) / skirt_h : 1.0f);
+
+                // Smooth interpolation alpha
+                float ax = 0.5f + 0.5f * weight_x;
+                float ay = 0.5f + 0.5f * weight_y;
+
+                // Bilinear blend of the 4 samples
+                float n = Math::lerp(
+                    Math::lerp(n_xy, n_y, ax),
+                    Math::lerp(n_x, n_center, ax),
+                    ay
+                );
+
+                if (p_normalize) n = (n + 1.0f) * 0.5f;
+                if (p_invert) n = 1.0f - n;
+
+                n = CLAMP(n, 0.0f, 1.0f);
+                image->set_pixel(x, y, Color(n, n, n));
             }
-            
-            if (p_invert) {
-                n = 1.0f - n;
-            }
-            
-            n = CLAMP(n, 0.0f, 1.0f);
-            uint8_t value = static_cast<uint8_t>(n * 255.0f);
-            image->set_pixel(x, y, Color(value / 255.0f, value / 255.0f, value / 255.0f));
         }
     }
-    
     return image;
 }
-
 TypedArray<Image> Simplex::get_image_3d(int32_t p_width, int32_t p_height, int32_t p_depth, bool p_invert, bool p_normalize) const
 {
     TypedArray<Image> images;
@@ -502,82 +490,56 @@ TypedArray<Image> Simplex::get_image_3d(int32_t p_width, int32_t p_height, int32
     return images;
 }
 
-TypedArray<Image> Simplex::get_seamless_image_3d(int32_t p_width, int32_t p_height, int32_t p_depth, bool p_invert, float p_skirt, bool p_normalize) const
-{
+TypedArray<Image> Simplex::get_seamless_image_3d(int p_width, int p_height, int p_depth, bool p_invert, float p_skirt, bool p_normalize) const {
     TypedArray<Image> images;
     images.resize(p_depth);
-    
-    float scale_x = 1.0f / (p_width - 1);
-    float scale_y = 1.0f / (p_height - 1);
-    float scale_z = 1.0f / (p_depth - 1);
-    float blend_start = p_skirt;
-    float blend_end = 1.0f - p_skirt;
-    
+
+    float skirt_w = p_width * p_skirt;
+    float skirt_h = p_height * p_skirt;
+    float skirt_d = p_depth * p_skirt;
+
     for (int z = 0; z < p_depth; z++) {
-        float nz = z * scale_z;
         Ref<Image> slice = Image::create(p_width, p_height, false, Image::FORMAT_L8);
         
         for (int y = 0; y < p_height; y++) {
-            float ny = y * scale_y;
-            
             for (int x = 0; x < p_width; x++) {
-                float nx = x * scale_x;
-                
-                // For 3D seamless, we need to sample 8 corners and blend
-                float n000 = get_noise_3d(nx, ny, nz);
-                float n100 = get_noise_3d(nx - 1.0f, ny, nz);
-                float n010 = get_noise_3d(nx, ny - 1.0f, nz);
-                float n110 = get_noise_3d(nx - 1.0f, ny - 1.0f, nz);
-                float n001 = get_noise_3d(nx, ny, nz - 1.0f);
-                float n101 = get_noise_3d(nx - 1.0f, ny, nz - 1.0f);
-                float n011 = get_noise_3d(nx, ny - 1.0f, nz - 1.0f);
-                float n111 = get_noise_3d(nx - 1.0f, ny - 1.0f, nz - 1.0f);
-                
-                // Calculate blend weights
-                float wx = 1.0f;
-                float wy = 1.0f;
-                float wz = 1.0f;
-                
-                if (nx < blend_start) {
-                    wx = Math::smoothstep(0.0f, blend_start, nx);
-                } else if (nx > blend_end) {
-                    wx = 1.0f - Math::smoothstep(blend_end, 1.0f, nx);
-                }
-                
-                if (ny < blend_start) {
-                    wy = Math::smoothstep(0.0f, blend_start, ny);
-                } else if (ny > blend_end) {
-                    wy = 1.0f - Math::smoothstep(blend_end, 1.0f, ny);
-                }
-                
-                if (nz < blend_start) {
-                    wz = Math::smoothstep(0.0f, blend_start, nz);
-                } else if (nz > blend_end) {
-                    wz = 1.0f - Math::smoothstep(blend_end, 1.0f, nz);
-                }
-                
-                // Trilinear interpolation
-                float n0 = Math::lerp(Math::lerp(n000, n100, wx), Math::lerp(n010, n110, wx), wy);
-                float n1 = Math::lerp(Math::lerp(n001, n101, wx), Math::lerp(n011, n111, wx), wy);
-                float n = Math::lerp(n0, n1, wz);
-                
-                if (p_normalize) {
-                    n = (n + 1.0f) * 0.5f;
-                }
-                
-                if (p_invert) {
-                    n = 1.0f - n;
-                }
-                
+                // Use raw pixel coordinates (x, y, z)
+                float n_center = get_noise_3d((float)x, (float)y, (float)z);
+
+                // Offset directions
+                float ox = (x < p_width / 2) ? (float)p_width : -(float)p_width;
+                float oy = (y < p_height / 2) ? (float)p_height : -(float)p_height;
+                float oz = (z < p_depth / 2) ? (float)p_depth : -(float)p_depth;
+
+                // Sample wrapped neighbors (7 additional samples for full 3D seamlessness)
+                float n_x = get_noise_3d(x + ox, (float)y, (float)z);
+                float n_y = get_noise_3d((float)x, y + oy, (float)z);
+                float n_z = get_noise_3d((float)x, (float)y, z + oz);
+
+                // Blending weights
+                float wx = (x < skirt_w) ? (x / skirt_w) : ((p_width - 1 - x) < skirt_w ? (p_width - 1 - x) / skirt_w : 1.0f);
+                float wy = (y < skirt_h) ? (y / skirt_h) : ((p_height - 1 - y) < skirt_h ? (p_height - 1 - y) / skirt_h : 1.0f);
+                float wz = (z < skirt_d) ? (z / skirt_d) : ((p_depth - 1 - z) < skirt_d ? (p_depth - 1 - z) / skirt_d : 1.0f);
+
+                float ax = 0.5f + 0.5f * wx;
+                float ay = 0.5f + 0.5f * wy;
+                float az = 0.5f + 0.5f * wz;
+
+                // Triple lerp for 3D blending
+                float nx = Math::lerp(n_x, n_center, ax);
+                float ny = Math::lerp(n_y, n_center, ay);
+                float nz = Math::lerp(n_z, n_center, az);
+                float n = (nx + ny + nz) / 3.0f;
+
+                if (p_normalize) n = (n + 1.0f) * 0.5f;
+                if (p_invert) n = 1.0f - n;
+
                 n = CLAMP(n, 0.0f, 1.0f);
-                uint8_t value = static_cast<uint8_t>(n * 255.0f);
-                slice->set_pixel(x, y, Color(value / 255.0f, value / 255.0f, value / 255.0f));
+                slice->set_pixel(x, y, Color(n, n, n));
             }
         }
-        
         images[z] = slice;
     }
-    
     return images;
 }
 
