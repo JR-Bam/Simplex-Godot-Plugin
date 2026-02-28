@@ -7,6 +7,7 @@ var terrain: MeshInstance3D
 var mesh: ArrayMesh
 @export var noise: Simplex
 @export var fnoise: FastNoiseLite
+@export var test_texture: Texture3D
 
 @export_enum("Simplex", "FastNoiseLite") var noise_type: int = 0:
 	set(_type):

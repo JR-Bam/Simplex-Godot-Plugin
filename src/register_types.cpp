@@ -1,6 +1,7 @@
 #include "register_types.hpp"
 #include "Simplex.hpp"
 #include "SimplexTexture.hpp"
+#include "SimplexTexture3D.hpp"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/core/defs.hpp>
@@ -16,11 +17,13 @@ void initialize_simplex_module(ModuleInitializationLevel p_level) {
         printf("[SimplexNoise] Registered Simplex at CORE level\n");
     }
     
-    // Register SimplexTexture at SCENE level
+    // Register SimplexTexture and SimplexTexture3D at SCENE level
     if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
         printf("[SimplexNoise] Initializing SCENE level...\n");
         GDREGISTER_CLASS(SimplexTexture);
+        GDREGISTER_CLASS(SimplexTexture3D);
         printf("[SimplexNoise] Registered SimplexTexture at SCENE level\n");
+        printf("[SimplexNoise] Registered SimplexTexture3D at SCENE level\n");
     }
 }
 
