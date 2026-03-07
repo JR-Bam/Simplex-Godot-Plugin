@@ -146,13 +146,13 @@ void SimplexTexture3D::_update_texture() {
         actual_mipmaps == current_mipmaps) {
         
         // Compatible -> Safe to update GPU buffer
-        UtilityFunctions::print("Updated 3D Texture");
+        
         update(data_cache);
         
     } else {
         
         // Size, format, or depth changed -> Must completely recreate
-        UtilityFunctions::print("Initialized 3D Texture with format: ", actual_format);
+        
         
         Error err = create(actual_format, actual_width, actual_height, actual_depth, actual_mipmaps, data_cache);
         

@@ -7,6 +7,8 @@
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 #include <type_traits>
+#include <godot_cpp/classes/fast_noise_lite.hpp>
+#include <godot_cpp/classes/time.hpp>
 
 #include "lib/SimplexNoise.h"
 #include <memory>
@@ -89,6 +91,8 @@ namespace godot
         float get_domain_warp_lacunarity();
         void set_domain_warp_gain(float gain);
         float get_domain_warp_gain();
+
+        Dictionary benchmark_against_fnl(Ref<FastNoiseLite> p_fnl, int p_dims, int p_iterations, float p_step = 0.01) const;
     private:
         std::unique_ptr<SimplexNoise> noise;
         FractalType type;

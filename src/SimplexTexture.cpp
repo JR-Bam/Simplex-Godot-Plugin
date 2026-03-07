@@ -18,11 +18,11 @@ SimplexTexture::SimplexTexture() :
     current_image_size(0, 0),
     current_image_format(Image::FORMAT_MAX),
     dirty(true) {
-        UtilityFunctions::print("[SimplexTexture] Constructor");
+        
 
         if (noise.is_valid()) {
             noise->connect("changed", Callable(this, "_on_noise_changed"));
-            UtilityFunctions::print("[SimplexTexture] Noise instantiated and connected");
+            
         }
 
         // Generate initial texture
@@ -193,13 +193,13 @@ void SimplexTexture::_get_property_list(List<PropertyInfo> *p_list) const {
 }
 
 void SimplexTexture::_update_texture() {
-    UtilityFunctions::print("[SimplexTexture] _update_texture() called, dirty=", dirty);
+    
     if (!dirty) {
         return;
     }
 
     if (noise.is_null()) {
-        UtilityFunctions::print("[SimplexTexture] _update_texture: noise is NULL!");
+        
         return;
     }
     
@@ -212,10 +212,10 @@ void SimplexTexture::_update_texture() {
     }
 
     if (image.is_null()) {
-        UtilityFunctions::print("[SimplexTexture] _update_texture: image is NULL!");
+        
         return;
     }
-    UtilityFunctions::print("[SimplexTexture] _update_texture: image obtained, format=", image->get_format());
+
     
     // Apply color ramp if provided
     if (color_ramp.is_valid() && color_ramp->get_point_count() > 0) {

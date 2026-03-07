@@ -52,6 +52,8 @@ void Simplex::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_domain_warp_gain", "gain"), &Simplex::set_domain_warp_gain);
     ClassDB::bind_method(D_METHOD("get_domain_warp_gain"), &Simplex::get_domain_warp_gain);
 
+    ClassDB::bind_method(D_METHOD("benchmark_against_fnl", "fnl_object", "dims", "iterations", "step"), &Simplex::benchmark_against_fnl, DEFVAL(0.01));
+
     // Static Properties
     ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "frequency", 
@@ -288,7 +290,7 @@ bool Simplex::_get(const StringName &p_name, Variant &r_ret) const {
 
 float Simplex::get_noise_1d(float p_x) const
 {
-    return this->noise->fractal(p_x, this->type == FRACTAL_NONE);
+    return this->noise->noise(this->noise->mFrequency * p_x, this->noise->mSeed);
 }
 
 float Simplex::get_noise_2d(float p_x, float p_y) const
@@ -301,7 +303,10 @@ float Simplex::get_noise_2d(float p_x, float p_y) const
         return this->noise->ridged(p_x, p_y);
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(p_x, p_y);
-    default:
+    case FRACTAL_NONE:{
+        float freq = this->noise->mFrequency;
+        return this->noise->noise(freq * p_x, freq * p_y, this->noise->mSeed);
+    }default:
         return this->noise->fractal(p_x, p_y, this->type == FRACTAL_NONE);
     }
 }
@@ -318,7 +323,10 @@ float Simplex::get_noise_2dv(const Vector2 &p_v) const
         return this->noise->ridged(x, y);
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(x, y);
-    default:
+    case FRACTAL_NONE:{
+        float freq = this->noise->mFrequency;
+        return this->noise->noise(freq * x, freq * y, this->noise->mSeed);
+    }default:
         return this->noise->fractal(x, y, this->type == FRACTAL_NONE);
     }
     
@@ -331,7 +339,10 @@ float Simplex::get_noise_3d(float p_x, float p_y, float p_z) const
         return this->noise->ridged(p_x, p_y, p_z);
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(p_x, p_y, p_z);
-    default:
+    case FRACTAL_NONE:{
+        float freq = this->noise->mFrequency;
+        return this->noise->noise(freq * p_x, freq * p_y, freq * p_z, this->noise->mSeed);
+    }default:
         return this->noise->fractal(p_x, p_y, p_z, this->type == FRACTAL_NONE);
     }
 }
@@ -345,7 +356,10 @@ float Simplex::get_noise_3dv(const Vector3 &p_v) const
         return this->noise->ridged(x, y, z);
     case FRACTAL_PING_PONG:
         return this->noise->pingpong(x, y, z);
-    default: // None and Fractal
+    case FRACTAL_NONE:{
+        float freq = this->noise->mFrequency;
+        return this->noise->noise(freq * x, freq * y, freq * z, this->noise->mSeed);
+    }default:
         return this->noise->fractal(x, y, z);
     }
 }
@@ -576,4 +590,38 @@ void Simplex::_update_preview()
     } else {
         preview_cache->update(image);
     }
+}
+
+Dictionary Simplex::benchmark_against_fnl(Ref<FastNoiseLite> p_fnl, int p_dims, int p_iterations, float p_step) const {
+    Dictionary results;
+    
+    if (p_fnl.is_null()) {
+        return results;
+    }
+
+    Time *time = Time::get_singleton();
+
+    // --- Part 1: Benchmark THIS Simplex Instance ---
+    uint64_t start_s = time->get_ticks_usec();
+    for (int i = 0; i < p_iterations; i++) {
+        float c = (float)i * p_step;
+        if (p_dims == 2) get_noise_2d(c, c);
+        else if (p_dims == 3) get_noise_3d(c, c, c);
+        else get_noise_1d(c);
+    }
+    uint64_t end_s = time->get_ticks_usec();
+    results["simplex_ms"] = (end_s - start_s) / 1000.0;
+
+    // --- Part 2: Benchmark the Passed FastNoiseLite Instance ---
+    uint64_t start_p = time->get_ticks_usec();
+    for (int i = 0; i < p_iterations; i++) {
+        float c = (float)i * p_step;
+        if (p_dims == 2) p_fnl->get_noise_2d(c, c);
+        else if (p_dims == 3) p_fnl->get_noise_3d(c, c, c);
+        else p_fnl->get_noise_1d(c);
+    }
+    uint64_t end_p = time->get_ticks_usec();
+    results["perlin_ms"] = (end_p - start_p) / 1000.0;
+
+    return results;
 }
